@@ -3,791 +3,130 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Irregular verbs – Trainer</title>
+<title>Krümels Lernwelt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥚</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --paper:#F5F8FC; --sheet:#FFFFFF; --ink:#1B2F6E; --text:#1C2333; --muted:#5D6880;
-  --rule:#D5DEEC; --margin:#E8A0A8; --ok:#1F7A4A; --ok-bg:#E3F4EA; --bad:#C8312F; --bad-bg:#FBE6E5;
-  --btn:#1B2F6E; --btn-text:#FFFFFF; --field:#FFFFFF;
-  --xp:#6C5CE7; --mood:#E84393; --goal:#F39C12; --track:#E6ECF5; --bubble:#FFFFFF; --petline:#1B2F6E;
-  color-scheme:light;
-  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#10162A; --sheet:#18203A; --ink:#A9BCFF; --text:#E6EAF5; --muted:#9AA4BE;
-    --rule:#2C3758; --margin:#8A4552; --ok:#6BD69B; --ok-bg:#16352A; --bad:#FF8A84; --bad-bg:#3E1E24;
-    --btn:#A9BCFF; --btn-text:#10162A; --field:#121A30;
-    --xp:#A29BFE; --mood:#FD79A8; --goal:#FDCB6E; --track:#26304D; --bubble:#232D4C; --petline:#0E1426;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#10162A; --sheet:#18203A; --ink:#A9BCFF; --text:#E6EAF5; --muted:#9AA4BE;
-  --rule:#2C3758; --margin:#8A4552; --ok:#6BD69B; --ok-bg:#16352A; --bad:#FF8A84; --bad-bg:#3E1E24;
-  --btn:#A9BCFF; --btn-text:#10162A; --field:#121A30;
-  --xp:#A29BFE; --mood:#FD79A8; --goal:#FDCB6E; --track:#26304D; --bubble:#232D4C; --petline:#0E1426;
-  color-scheme:dark;
-}
-*,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--paper);color:var(--text);
-  font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:1.0625rem;line-height:1.5}
-main{max-width:40rem;margin:0 auto;padding:1.25rem 1rem 3rem}
-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:.5rem 1rem;margin-bottom:1rem}
-h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:2rem;line-height:1.05;margin:0;color:var(--ink);letter-spacing:-.01em}
-.score{color:var(--muted);font-size:.95rem;margin:0}
-
-/* buddy */
-.buddy{display:grid;grid-template-columns:auto 1fr;gap:.75rem 1rem;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:18px;padding:.9rem 1rem;margin-bottom:1rem}
-.pet-wrap{position:relative;width:132px;height:132px}
-#pet{width:132px;height:132px;color:var(--petline)}
-#pet svg{width:100%;height:100%;display:block;overflow:visible}
-.bubble{position:absolute;left:50%;bottom:calc(100% - 6px);transform:translateX(-50%);background:var(--bubble);color:var(--text);border:2px solid var(--rule);
-  border-radius:12px;padding:.2rem .55rem;font-size:.85rem;font-weight:700;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s;z-index:2}
-.bubble.show{opacity:1}
-.float{position:absolute;right:-.25rem;top:.25rem;white-space:pre;text-align:right;line-height:1.15;font-weight:800;font-family:"Bricolage Grotesque",system-ui,sans-serif;color:var(--xp);font-size:1.15rem;opacity:0;pointer-events:none}
-.float.go{animation:floatUp 1.1s ease-out}
-@keyframes floatUp{0%{opacity:0;transform:translateY(8px)}20%{opacity:1}100%{opacity:0;transform:translateY(-28px)}}
-.stats{min-width:0}
-.name-row{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap}
-.pet-name{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:1.35rem;color:var(--ink);background:none;border:0;padding:0;cursor:pointer;text-align:left}
-.pet-name:hover{text-decoration:underline}
-.name-input{font:inherit;font-weight:700;font-size:1.1rem;width:9rem;padding:.15rem .4rem;border:2px solid var(--ink);border-radius:6px;background:var(--field);color:var(--text)}
-.stage{color:var(--muted);font-size:.9rem}
-.bar{margin-top:.4rem}
-.bar-label{display:flex;justify-content:space-between;gap:.5rem;font-size:.85rem;color:var(--muted)}
-.track{height:10px;background:var(--track);border-radius:99px;overflow:hidden;margin-top:2px}
-.fill{height:100%;border-radius:99px;transition:width .5s ease}
-.fill.xp{background:var(--xp)} .fill.mood{background:var(--mood)} .fill.goal{background:var(--goal)}
-.chips{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.55rem}
-.chip.coins{border-color:var(--goal)}
-.chip.coins.bump{animation:bump .4s ease}
-@keyframes bump{40%{transform:scale(1.18)}}
-.wardrobe-btn{grid-column:1/-1;font:inherit;font-weight:700;font-size:1rem;border:2px dashed var(--xp);color:var(--xp);background:transparent;border-radius:12px;padding:.55rem 1rem;cursor:pointer;width:100%}
-.wardrobe-btn:focus-visible,.item:focus-visible,.shop-close:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
-.shop{background:var(--sheet);border:1px solid var(--rule);border-radius:18px;padding:1rem;margin:-.25rem 0 1rem}
-.shop[hidden]{display:none}
-.shop-head{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
-.shop h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:1.3rem;color:var(--ink);margin:0}
-.shop h3{font-size:1rem;margin:1rem 0 .4rem;color:var(--muted);font-weight:700}
-.shop-note{color:var(--muted);font-size:.92rem;margin:.4rem 0 0}
-.shop-close{font:inherit;font-weight:700;border:0;background:var(--ink);color:var(--btn-text);border-radius:99px;padding:.35rem .9rem;cursor:pointer}
-.items{display:grid;grid-template-columns:repeat(auto-fill,minmax(6.4rem,1fr));gap:.5rem}
-.item{font:inherit;background:var(--paper);border:2px solid var(--rule);border-radius:12px;padding:.35rem .35rem .5rem;cursor:pointer;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:.1rem;text-align:center}
-.item .mini{width:64px;height:64px;color:var(--petline)}
-.item .mini svg{width:100%;height:100%;overflow:visible}
-.mini .body-g{animation:none!important}
-.item .iname{font-weight:700;font-size:.88rem;line-height:1.2}
-.item .istat{font-size:.82rem;color:var(--muted)}
-.item.worn{border-color:var(--ok);background:var(--ok-bg)}
-.item.worn .istat{color:var(--ok);font-weight:700}
-.item.trying{border-color:var(--xp)}
-.item.trying .istat{color:var(--xp);font-weight:700}
-.item.poor,.item.locked{opacity:.55}
-.chip{font-size:.85rem;font-weight:700;border:1px solid var(--rule);border-radius:99px;padding:.1rem .55rem;background:var(--paper)}
-.chip.hot{border-color:var(--goal)}
-@media (max-width:420px){.buddy{grid-template-columns:1fr;justify-items:center;text-align:left}.stats{width:100%}.pet-wrap{margin-top:1.4rem}}
-
-/* pet motion */
-@media (prefers-reduced-motion:no-preference){
-  #pet .body-g{animation:breathe 3.2s ease-in-out infinite;transform-origin:60px 112px}
-  #pet.hop{animation:hop .55s ease}
-  #pet.droop{animation:droop .6s ease}
-  #pet.egg-wobble .body-g{animation:wobble 1.6s ease-in-out infinite;transform-origin:60px 105px}
-}
-@keyframes breathe{50%{transform:scale(1.03,.97)}}
-@keyframes hop{30%{transform:translateY(-16px)}60%{transform:translateY(0)}75%{transform:translateY(-5px)}}
-@keyframes droop{30%{transform:rotate(-6deg)}70%{transform:rotate(5deg)}}
-@keyframes wobble{0%,60%,100%{transform:rotate(0)}70%{transform:rotate(-7deg)}80%{transform:rotate(6deg)}90%{transform:rotate(-3deg)}}
-
-.modes{display:flex;gap:.25rem;background:var(--sheet);border:1px solid var(--rule);border-radius:999px;padding:.25rem;margin-bottom:1rem;width:max-content;max-width:100%}
-.modes button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.95rem;padding:.45rem .9rem;border-radius:999px;cursor:pointer}
-.modes button[aria-pressed="true"]{background:var(--ink);color:var(--btn-text)}
-.modes button:disabled{opacity:.45;cursor:not-allowed}
-
-.sheet{position:relative;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;
-  padding:1.5rem 1.25rem 1.5rem 3rem;
-  background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 2.15rem,var(--rule) 2.15rem,var(--rule) calc(2.15rem + 1px));
-  background-position:0 1.1rem}
-.sheet::before{content:"";position:absolute;top:0;bottom:0;left:2rem;width:2px;background:var(--margin)}
-.given-label{color:var(--muted);font-size:.95rem;margin:0}
-.given{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:500;font-size:clamp(2rem,8vw,3rem);line-height:1.15;color:var(--ink);margin:.1rem 0 1.25rem;overflow-wrap:anywhere}
-.field{margin-bottom:1rem}
-.field label{display:block;font-weight:700;margin-bottom:.3rem}
-.field .hint{font-weight:400;color:var(--muted);font-size:.9rem}
-.field input{width:100%;font:inherit;font-size:1.2rem;padding:.6rem .75rem;border:2px solid var(--rule);border-radius:6px;background:var(--field);color:var(--text)}
-.field input:focus-visible{outline:none;border-color:var(--ink)}
-.field.ok input{border-color:var(--ok);background:var(--ok-bg)}
-.field.bad input{border-color:var(--bad);background:var(--bad-bg);text-decoration:line-through;text-decoration-color:var(--bad)}
-.correction{margin:.35rem 0 0;font-size:1rem}
-.field.ok .correction{color:var(--ok)}
-.field.bad .correction{color:var(--bad);font-weight:700}
-.actions{display:flex;align-items:center;gap:.75rem 1rem;flex-wrap:wrap;margin-top:.5rem}
-.primary{font:inherit;font-weight:700;font-size:1.05rem;border:0;border-radius:6px;padding:.7rem 1.4rem;background:var(--btn);color:var(--btn-text);cursor:pointer}
-.secondary{font:inherit;font-weight:700;font-size:1.05rem;border:2px solid var(--ink);border-radius:6px;padding:calc(.7rem - 2px) 1.2rem;background:transparent;color:var(--ink);cursor:pointer}
-.secondary[hidden]{display:none}
-.secondary:focus-visible,.primary:focus-visible,.modes button:focus-visible,.link:focus-visible,.pet-name:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
-.feedback{margin:0;font-weight:700}
-.feedback.ok{color:var(--ok)} .feedback.bad{color:var(--bad)}
-.full{color:var(--muted);font-size:.95rem;margin:.75rem 0 0}
-
-.mistakes{margin-top:2rem}
-.mistakes h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:1.3rem;color:var(--ink);margin:0 0 .25rem}
-.mistakes p{color:var(--muted);margin:0 0 .75rem;font-size:.95rem}
-.list-wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:.98rem}
-th,td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top}
-th{color:var(--muted);font-weight:400}
-td.n{color:var(--bad);font-weight:700;white-space:nowrap}
-.link{background:none;border:0;padding:0;font:inherit;color:var(--ink);text-decoration:underline;cursor:pointer;margin-top:.75rem}
-.empty{color:var(--muted)}
-@media (max-width:420px){.sheet{padding-left:2.4rem}.sheet::before{left:1.5rem}}
-@media (prefers-reduced-motion:no-preference){.sheet.shake{animation:shake .3s}}
-@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-
-/* celebration */
-.celebrate{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,15,35,.55);z-index:20;padding:1rem}
-.celebrate[hidden]{display:none}
-.celebrate-card{background:var(--sheet);border-radius:22px;padding:1.5rem 1.5rem 1.25rem;max-width:22rem;width:100%;text-align:center;border:3px solid var(--goal)}
-.celebrate-card .big{width:170px;height:170px;margin:0 auto;color:var(--petline)}
-.celebrate-card .big svg{width:100%;height:100%;overflow:visible}
-.celebrate-card h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;color:var(--ink);font-size:1.6rem;line-height:1.15;margin:.5rem 0 .25rem}
-.celebrate-card p{margin:0 0 1rem;color:var(--muted)}
-@media (prefers-reduced-motion:no-preference){
-  .celebrate-card{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
-}
-@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
   <header>
-    <h1>Irregular verbs</h1>
-    <p class="score" id="score">Noch keine Antworten</p>
+    <div>
+      <h1 id="title">Lernwelt</h1>
+      <p class="intro">Such dir was aus. Jede richtige Antwort füttert dein Monster.</p>
+    </div>
   </header>
 
-  <section class="buddy" aria-label="Dein Verb-Monster">
-    <div class="pet-wrap">
-      <div class="bubble" id="bubble" aria-live="polite"></div>
-      <div id="pet"></div>
-      <div class="float" id="float" aria-hidden="true"></div>
-    </div>
-    <div class="stats">
-      <div class="name-row">
-        <button type="button" class="pet-name" id="petName" title="Namen ändern"></button>
-        <span class="stage" id="stage"></span>
-      </div>
-      <div class="bar"><div class="bar-label"><span id="xpLabel"></span><span id="xpNum"></span></div><div class="track"><div class="fill xp" id="xpFill"></div></div></div>
-      <div class="bar"><div class="bar-label"><span>Laune</span><span id="moodLabel"></span></div><div class="track"><div class="fill mood" id="moodFill"></div></div></div>
-      <div class="bar"><div class="bar-label"><span>Tagesziel</span><span id="goalLabel"></span></div><div class="track"><div class="fill goal" id="goalFill"></div></div></div>
-      <div class="chips"><span class="chip" id="comboChip"></span><span class="chip" id="daysChip"></span><span class="chip" id="bestChip"></span><span class="chip coins" id="coinChip"></span></div>
-    </div>
-    <button type="button" class="wardrobe-btn" id="wardrobeBtn" aria-expanded="false" aria-controls="shop">👕 Kleiderschrank öffnen</button>
-  </section>
+  <section id="buddy" aria-label="Dein Monster"></section>
 
-  <section class="shop" id="shop" hidden aria-labelledby="shopTitle">
-    <div class="shop-head">
-      <h2 id="shopTitle">Kleiderschrank</h2>
-      <button type="button" class="shop-close" id="shopClose">Fertig</button>
+  <div id="trainers"></div>
+
+  <details class="backup" id="backup">
+    <summary>Spielstand sichern oder laden</summary>
+    <p>Dein Fortschritt ist nur in diesem Browser gespeichert. Mit einem Sicherungs-Code kannst du ihn aufheben oder auf ein anderes Gerät mitnehmen.</p>
+
+    <h3>Sichern</h3>
+    <div class="row">
+      <button type="button" class="primary small" id="exportBtn">Code erzeugen</button>
+      <button type="button" class="secondary small" id="copyBtn" hidden>Kopieren</button>
+      <button type="button" class="secondary small" id="saveFileBtn" hidden>Als Datei speichern</button>
     </div>
-    <p class="shop-note" id="shopNote"></p>
-    <div id="shopBody"></div>
-  </section>
+    <textarea id="exportBox" readonly hidden aria-label="Sicherungs-Code"></textarea>
+    <p class="msg" id="exportMsg" aria-live="polite"></p>
 
-  <div class="modes" role="group" aria-label="Übungsmodus">
-    <button type="button" id="modeAll" aria-pressed="true">Alle Verben</button>
-    <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
-  </div>
-
-  <section class="sheet" id="sheet" aria-live="polite">
-    <p class="given-label" id="givenLabel"></p>
-    <p class="given" id="given"></p>
-    <div class="field" id="f0"><label for="i0" id="l0"></label><input id="i0" autocomplete="off" autocapitalize="off" spellcheck="false"><p class="correction" id="c0" hidden></p></div>
-    <div class="field" id="f1"><label for="i1" id="l1"></label><input id="i1" autocomplete="off" autocapitalize="off" spellcheck="false"><p class="correction" id="c1" hidden></p></div>
-    <div class="actions">
-      <button type="button" class="primary" id="go">Prüfen</button>
-      <button type="button" class="secondary" id="idk">Keine Ahnung, Brudi!</button>
-      <p class="feedback" id="feedback"></p>
+    <h3>Laden</h3>
+    <p>Füge einen Sicherungs-Code ein oder wähle eine gespeicherte Datei. Achtung: Der Spielstand auf diesem Gerät wird dabei ersetzt.</p>
+    <textarea id="importBox" aria-label="Sicherungs-Code einfügen" placeholder="KRUEMEL1:…"></textarea>
+    <div class="row">
+      <button type="button" class="primary small" id="importBtn">Spielstand laden</button>
+      <label class="secondary small" style="display:inline-block">Datei wählen<input type="file" id="importFile" accept=".txt,text/plain" hidden></label>
     </div>
-    <p class="full" id="full" hidden></p>
-  </section>
-
-  <section class="mistakes" aria-labelledby="mh">
-    <h2 id="mh">Fehlerliste</h2>
-    <p>Ein Verb verschwindet von der Liste, wenn du es zweimal richtig hattest. Jeder besiegte Fehler gibt Bonus-XP.</p>
-    <div id="mistakeList"></div>
-  </section>
+    <p class="msg" id="importMsg" aria-live="polite"></p>
+  </details>
 </main>
 
-<div class="celebrate" id="celebrate" hidden role="dialog" aria-modal="true" aria-labelledby="celTitle">
-  <div class="celebrate-card">
-    <div class="big" id="celPet"></div>
-    <h2 id="celTitle"></h2>
-    <p id="celText"></p>
-    <button type="button" class="primary" id="celOk">Weiter üben</button>
-  </div>
-</div>
-
+<script src="kruemel.js"></script>
 <script>
-const VERBS = [
-["be","was / were","sein"],["beat","beat","schlagen; besiegen"],["become","became","werden"],
-["begin","began","beginnen; anfangen"],["bet","bet","wetten"],["bite","bit","beißen"],
-["break","broke","(zer)brechen; kaputt machen"],["bring","brought","(mit)bringen"],["build","built","bauen"],
-["burn","burnt / burned","(ver)brennen"],["buy","bought","kaufen"],["catch","caught","fangen"],
-["choose","chose","(aus)wählen"],["come","came","kommen"],["cost","cost","kosten"],["cut","cut","schneiden"],
-["deal (with)","dealt (with)","sich befassen (mit); umgehen (mit)"],["do","did","machen; tun"],
-["draw","drew","zeichnen; ziehen"],["dream","dreamt / dreamed","träumen"],["drink","drank","trinken"],
-["drive","drove","fahren"],["eat","ate","essen"],["fall","fell","(hin)fallen"],["feed","fed","füttern; ernähren"],
-["feel","felt","fühlen"],["fight","fought","kämpfen; (sich) streiten"],["find","found","finden"],
-["fit","fit / fitted","passen"],["fly","flew","fliegen"],["forget","forgot","vergessen"],
-["forgive","forgave","vergeben; verzeihen"],["freeze","froze","gefrieren; erstarren"],["get","got","bekommen; erhalten"],
-["give","gave","geben"],["go","went","gehen; fahren"],["grow","grew","wachsen; anbauen; züchten"],
-["hang","hung","hängen"],["have","had","haben"],["hear","heard","hören"],["hide","hid","(sich) verstecken"],
-["hit","hit","schlagen; treffen"],["hold","held","(fest)halten"],
-["hurt","hurt","verletzen; sich wehtun"],["keep","kept","(auf)bewahren; behalten"],["know","knew","kennen; wissen"],
-["lead","led","(an)führen"],["learn","learnt / learned","lernen"],["leave","left","(ver)lassen"],["let","let","lassen"],
-["lie","lay","liegen"],["lose","lost","verlieren"],["make","made","machen; tun"],["mean","meant","bedeuten; meinen"],
-["meet","met","treffen"],["pay","paid","(be)zahlen"],["put","put","legen; setzen; stellen"],["read","read","lesen"],
-["ride","rode","fahren; reiten"],["ring","rang","klingeln; läuten"],["run","ran","laufen; rennen"],["say","said","sagen"],
-["see","saw","sehen"],["sell","sold","verkaufen"],["send","sent","senden; verschicken"],["set up","set up","erbauen; errichten"],
-["shoot","shot","schießen"],["show","showed","zeigen"],["sing","sang","singen"],["sink","sank","untergehen; sinken"],
-["sit","sat","sitzen"],["sleep","slept","schlafen"],["smell","smelt / smelled","riechen; duften"],["speak","spoke","sprechen"],
-["spell","spelt / spelled","buchstabieren"],["spend","spent","ausgeben; verbringen"],["stand","stood","stehen"],
-["steal","stole","stehlen"],["swim","swam","schwimmen"],["take","took","nehmen"],["teach","taught","unterrichten; lehren; beibringen"],
-["tell","told","erzählen"],["think","thought","(nach)denken; glauben"],["throw","threw","werfen"],
-["understand","understood","verstehen"],["wake up","woke up","(auf)wachen; (auf)wecken"],["wear","wore","anhaben; tragen"],
-["win","won","gewinnen; siegen"],["write","wrote","schreiben"]
-].map(([inf,past,de])=>({inf,past,de}));
+(function(){
+const K = Kruemel, $ = id => document.getElementById(id);
+const P = K.profile();
+$("title").textContent = P.name + "s Lernwelt";
+document.title = P.name + "s Lernwelt";
 
-const FORMS = ["inf","past","de"];
-const LABEL = {inf:"Infinitive", past:"Simple past", de:"Deutsch"};
-const HINT  = {inf:"", past:"", de:" – eine Bedeutung reicht"};
-const STORE_KEY = "irregular-verbs-mistakes-v1";
-const GAME_KEY  = "irregular-verbs-game-v1";
-const DAILY_GOAL = 20;
+K.mount($("buddy"), {greeting:"Was lernen wir heute?"});
 
-const STAGES = [
-  {xp:0,    name:"Ei"},
-  {xp:60,   name:"Frisch geschlüpft"},
-  {xp:200,  name:"Baby"},
-  {xp:450,  name:"Kind"},
-  {xp:850,  name:"Teenie"},
-  {xp:1400, name:"Groß und stark"},
-  {xp:2200, name:"Verb-Legende"}
-];
-const COLORS = ["#F3EBDD","#9BE0C0","#6CCCA8","#5DB8D6","#7D95F7","#A47BF5","#F4B93A"];
-
-const norm = s => s.toLowerCase().replace(/ß/g,"ss").replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue")
-  .replace(/[()]/g,"").replace(/[.!?]+$/,"").replace(/\s+/g," ").trim();
-
-function variants(form, value){
-  const parts = value.split(form==="de" ? ";" : "/").map(s=>s.trim()).filter(Boolean);
-  const out = new Set();
-  for(const p of parts){
-    const without = p.replace(/\([^)]*\)/g,"").replace(/\s+/g," ").trim();
-    const withIt  = p.replace(/[()]/g,"").replace(/\s+/g," ").trim();
-    for(const v of [without, withIt]){
-      out.add(norm(v));
-      if(form==="de" && /^sich /.test(v)) out.add(norm(v.slice(5)));
-    }
+// ---- Trainer-Karten, nach Fach gruppiert ----
+const box = $("trainers");
+const subjects = [...new Set(K.TRAINERS.map(t=>t.subject))];
+for(const s of subjects){
+  const h = document.createElement("h2"); h.className = "subject"; h.textContent = s; box.append(h);
+  const grid = document.createElement("div"); grid.className = "cards"; box.append(grid);
+  for(const t of K.TRAINERS.filter(t=>t.subject===s)){
+    const data = K.trainer(t.id);
+    const mastered = K.masteredCount(t.id);
+    const open = Object.keys(data.mistakes||{}).length;
+    const pct = Math.round(mastered / t.total * 100);
+    const a = document.createElement("a"); a.className = "card"; a.href = t.path;
+    const h3 = document.createElement("h3"); h3.textContent = t.title;
+    const p = document.createElement("p"); p.textContent = t.desc;
+    const bar = document.createElement("div"); bar.className = "track";
+    const fill = document.createElement("div"); fill.className = "fill master"; fill.style.width = pct + "%"; bar.append(fill);
+    const meta = document.createElement("div"); meta.className = "meta";
+    const m1 = document.createElement("span"); m1.textContent = mastered >= t.total ? "Alles gemeistert 🎓" : mastered + " von " + t.total + " gemeistert";
+    if(mastered >= t.total) m1.className = "badge";
+    const m2 = document.createElement("span"); m2.textContent = open ? open + " Fehler offen" : "";
+    meta.append(m1, m2);
+    a.append(h3, p, bar, meta);
+    grid.append(a);
   }
-  return out;
-}
-function matches(form, verb, input){
-  const n = norm(input);
-  if(!n) return false;
-  const ok = variants(form, verb[form]);
-  if(ok.has(n)) return true;
-  if(form!=="de"){
-    const bits = n.split(/\s*[\/,]\s*/).filter(Boolean);
-    return bits.length>1 && bits.every(b=>ok.has(b));
-  }
-  return false;
 }
 
-// ---- dates ----
-const dayStr = (d=new Date()) => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const daysBetween = (a,b) => Math.round((new Date(b+"T12:00")-new Date(a+"T12:00"))/86400000);
-const today = () => dayStr();
-
-// ---- state ----
-const $ = id => document.getElementById(id);
-let mistakes = {};
-try{ mistakes = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }catch(e){ mistakes = {}; }
-const freshGame = () => ({name:"Krümel", xp:0, mood:70, lastPlayed:null, day:null, dayCorrect:0, goalDay:null, dayStreak:0, bestCombo:0, owned:[], wear:{}});
-let game = freshGame();
-try{ Object.assign(game, JSON.parse(localStorage.getItem(GAME_KEY)) || {}); }catch(e){}
-
-let mode = "all", deck = [], current = null, givenForm = "inf", checked = false, lastInf = null;
-let right = 0, total = 0, combo = 0;
-
-// ---- derived game values ----
-function stageIndex(xp=game.xp){ let i=0; STAGES.forEach((s,k)=>{ if(xp>=s.xp) i=k; }); return i; }
-function effMood(){
-  if(!game.lastPlayed) return game.mood;
-  const gap = daysBetween(game.lastPlayed, today());
-  return gap>=2 ? Math.max(10, game.mood - 15*(gap-1)) : game.mood;
-}
-function dayCorrect(){ return game.day===today() ? game.dayCorrect : 0; }
-function dayStreak(){
-  if(!game.goalDay) return 0;
-  return daysBetween(game.goalDay, today())<=1 ? game.dayStreak : 0;
-}
-
-// ---- persistence ----
-let dbDoc = null, writing = false, pending = false;
-async function save(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(mistakes)); localStorage.setItem(GAME_KEY, JSON.stringify(game)); }catch(e){}
-  if(!dbDoc) return;
-  if(writing){ pending = true; return; }
-  writing = true;
-  try{ await dbDoc.set({mistakes, game}); }catch(e){}
-  writing = false;
-  if(pending){ pending = false; save(); }
-}
-(async()=>{
-  try{
-    if(!window.claude || !claude.use) return;
-    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
-    if(!db || !user) return;
-    const id = await user.id();
-    if(!id) return;
-    dbDoc = db.collection("data/users/"+id).doc("verbs");
-    const snap = await dbDoc.get();
-    if(snap.exists){
-      const d = snap.data() || {};
-      const m = d.mistakes || {};
-      for(const k in mistakes) if(!(k in m)) m[k] = mistakes[k];
-      mistakes = m;
-      if(d.game && (d.game.xp||0) >= game.xp && (d.game.coins!==undefined || game.coins===undefined)) game = Object.assign(freshGame(), d.game);
-      migrateCoins();
-      renderMistakes(); renderGame(); if(!$("shop").hidden) renderShop();
-      setTimeout(showIntro, 700);
-    }
-    save();
-  }catch(e){}
-})();
-
-
-// ---- wardrobe ----
-const SLOTS = [["head","Auf den Kopf"],["eyes","Für die Augen"],["neck","Um den Hals"],["extra","Extras"]];
-const SW = 'stroke="currentColor" stroke-linejoin="round"';
-const heart = (cx,cy) => `M${cx} ${cy+9} C${cx-15} ${cy} ${cx-12} ${cy-13} ${cx} ${cy-5} C${cx+12} ${cy-13} ${cx+15} ${cy} ${cx} ${cy+9}Z`;
-const ITEMS = [
-  {id:"cap", slot:"head", name:"Basecap", price:15, svg:`<path d="M-28 -84 C-28 -114 28 -114 28 -84 Z" fill="#E74C3C" ${SW} stroke-width="3"/><path d="M20 -86 q22 -4 26 2 q-4 6 -26 4 z" fill="#C0392B" ${SW} stroke-width="3"/><circle cx="0" cy="-109" r="4" fill="#C0392B"/>`},
-  {id:"bow", slot:"head", name:"Schleife", price:15, svg:`<path d="M20 -86 l-16 -12 l0 22 z M20 -86 l16 -12 l0 22 z" fill="#FF7EB6" ${SW} stroke-width="3"/><circle cx="20" cy="-86" r="5" fill="#E84393" stroke="currentColor" stroke-width="2.5"/>`},
-  {id:"party", slot:"head", name:"Partyhut", price:25, svg:`<path d="M-16 -86 L0 -128 L16 -86 Z" fill="#FDCB6E" ${SW} stroke-width="3"/><path d="M-10 -99 l17 -6 M-5 -112 l10 -4" stroke="#E84393" stroke-width="4" stroke-linecap="round"/><circle cx="0" cy="-130" r="6" fill="#E84393" stroke="currentColor" stroke-width="2.5"/>`},
-  {id:"phones", slot:"head", name:"Kopfhörer", price:40, minStage:2, svg:`<path d="M-44 -56 C-46 -114 46 -114 44 -56" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><rect x="-55" y="-68" width="16" height="27" rx="7" fill="#00B894" stroke="currentColor" stroke-width="3"/><rect x="39" y="-68" width="16" height="27" rx="7" fill="#00B894" stroke="currentColor" stroke-width="3"/>`},
-  {id:"wizard", slot:"head", name:"Zauberhut", price:70, minStage:4, svg:`<path d="M-20 -88 L6 -144 L22 -88 Z" fill="#6C5CE7" ${SW} stroke-width="3"/><ellipse cx="0" cy="-88" rx="34" ry="7" fill="#6C5CE7" stroke="currentColor" stroke-width="3"/><path d="M5 -122 l2.5 5 l5.5 1 l-4 4 l1 5.5 l-5 -2.5 l-5 2.5 l1 -5.5 l-4 -4 l5.5 -1z" fill="#FDCB6E"/>`},
-  {id:"sun", slot:"eyes", name:"Sonnenbrille", price:20, svg:`<rect x="-28" y="-58" width="23" height="15" rx="5" fill="#1B2F6E" stroke="currentColor" stroke-width="2.5"/><rect x="5" y="-58" width="23" height="15" rx="5" fill="#1B2F6E" stroke="currentColor" stroke-width="2.5"/><path d="M-5 -53 h10 M-28 -54 l-15 -4 M28 -54 l15 -4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M-24 -54 l7 -2 M9 -54 l7 -2" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>`},
-  {id:"nerd", slot:"eyes", name:"Nerd-Brille", price:20, svg:`<circle cx="-15" cy="-50" r="11" fill="#fff" fill-opacity=".25" stroke="currentColor" stroke-width="3"/><circle cx="15" cy="-50" r="11" fill="#fff" fill-opacity=".25" stroke="currentColor" stroke-width="3"/><path d="M-4 -51 h8 M-26 -52 l-17 -3 M26 -52 l17 -3" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`},
-  {id:"patch", slot:"eyes", name:"Augenklappe", price:30, svg:`<path d="M-44 -72 L44 -44" stroke="currentColor" stroke-width="3"/><ellipse cx="15" cy="-50" rx="11" ry="10" fill="#2D3436" stroke="currentColor" stroke-width="2.5"/>`},
-  {id:"hearts", slot:"eyes", name:"Herzbrille", price:35, minStage:2, svg:`<path d="${heart(-15,-51)} ${heart(15,-51)}" fill="#FF4F8B" ${SW} stroke-width="2.5"/><path d="M-4 -52 h8 M-28 -53 l-15 -3 M28 -53 l15 -3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>`},
-  {id:"bowtie", slot:"neck", name:"Fliege", price:15, svg:`<path d="M0 -14 l-16 -9 v18 z M0 -14 l16 -9 v18 z" fill="#E84393" ${SW} stroke-width="3"/><circle cx="0" cy="-14" r="4.5" fill="#C0306F" stroke="currentColor" stroke-width="2.5"/>`},
-  {id:"bandana", slot:"neck", name:"Halstuch", price:20, svg:`<path d="M-34 -22 Q0 -12 34 -22 L0 4 Z" fill="#0984E3" ${SW} stroke-width="3"/><circle cx="-7" cy="-12" r="2" fill="#fff"/><circle cx="8" cy="-9" r="2" fill="#fff"/><circle cx="1" cy="-3" r="2" fill="#fff"/>`},
-  {id:"scarf", slot:"neck", name:"Schal", price:25, svg:`<path d="M22 -16 l5 24 l11 -2 l-5 -24 z" fill="#E17055" ${SW} stroke-width="3"/><path d="M-42 -25 Q0 -9 42 -25 L42 -15 Q0 1 -42 -15 Z" fill="#E17055" ${SW} stroke-width="3"/><path d="M-28 -20 v8 M-12 -16 v8 M4 -15 v8 M20 -18 v8" stroke="#FAB1A0" stroke-width="3"/>`},
-  {id:"chain", slot:"neck", name:"Goldkette", price:55, minStage:3, svg:`<path d="M-30 -26 Q0 -2 30 -26" fill="none" stroke="#F4B93A" stroke-width="5" stroke-dasharray="0.1 6" stroke-linecap="round"/><circle cx="0" cy="-10" r="8" fill="#F4B93A" stroke="currentColor" stroke-width="2.5"/><circle cx="-2" cy="-12" r="3" fill="#fff" opacity=".6"/>`},
-  {id:"flower", slot:"extra", name:"Blume", price:15, svg:`<path d="M40 -22 Q48 -40 50 -52" fill="none" stroke="#2E7D4F" stroke-width="3"/><g fill="#FF7EB6" stroke="currentColor" stroke-width="2"><circle cx="50" cy="-63" r="5"/><circle cx="58" cy="-57" r="5"/><circle cx="55" cy="-48" r="5"/><circle cx="45" cy="-48" r="5"/><circle cx="42" cy="-57" r="5"/></g><circle cx="50" cy="-55" r="4" fill="#FDCB6E" stroke="currentColor" stroke-width="2"/>`},
-  {id:"balloon", slot:"extra", name:"Luftballon", price:25, svg:`<path d="M40 -24 Q52 -50 47 -78" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="48" cy="-95" rx="13" ry="16" fill="#E74C3C" stroke="currentColor" stroke-width="2.5"/><path d="M44 -79 l4 -2 l4 2 z" fill="#E74C3C" ${SW} stroke-width="2"/><ellipse cx="43" cy="-100" rx="3" ry="5" fill="#fff" opacity=".5"/>`},
-  {id:"skate", slot:"extra", name:"Skateboard", price:45, minStage:3, layer:"under", svg:`<rect x="-46" y="2" width="92" height="7" rx="3.5" fill="#E17055" stroke="currentColor" stroke-width="2.5"/><circle cx="-29" cy="13" r="4.5" fill="#636E72" stroke="currentColor" stroke-width="2"/><circle cx="29" cy="13" r="4.5" fill="#636E72" stroke="currentColor" stroke-width="2"/>`},
-  {id:"wand", slot:"extra", name:"Zauberstab", price:60, minStage:4, svg:`<path d="M38 -24 L60 -60" stroke="#2D3436" stroke-width="4" stroke-linecap="round"/><path d="M62 -78 l3.5 7 l7.5 1.5 l-5.5 5 l1.5 7.5 l-7 -3.5 l-7 3.5 l1.5 -7.5 l-5.5 -5 l7.5 -1.5z" fill="#FDCB6E" ${SW} stroke-width="2"/>`}
-];
-const ITEM_BY_ID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
-const COIN = {correct:1, combo5:3, fixed:3, dailyGoal:10, stageUp:20};
-
-// Players from older versions get coins for everything they already did
-let pendingIntro = null, tryOn = null;
-function migrateCoins(){
-  if(game.coins !== undefined) return;
-  const earlier = Math.round((game.xp||0)/6);
-  game.coins = earlier + 20;
-  game.owned = game.owned || []; game.wear = game.wear || {};
-  pendingIntro = earlier;
-  save();
-}
-function addCoins(n){
-  game.coins = (game.coins||0) + n;
-  const c = $("coinChip"); c.classList.remove("bump"); void c.offsetWidth; c.classList.add("bump");
-}
-
-// ---- pet drawing ----
-function petSVG(stage, mood, wear=game.wear||{}){
-  const c = COLORS[stage];
-  if(stage===0){
-    const frac = (game.xp - STAGES[0].xp)/(STAGES[1].xp - STAGES[0].xp);
-    const crack = frac>0.45 ? `<path d="M38 62 l7 6 l6 -7 l7 7 l6 -6 l6 6 l6 -5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : "";
-    const crack2 = frac>0.8 ? `<path d="M48 82 l5 -5 l5 5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>` : "";
-    return `<svg viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="60" cy="113" rx="28" ry="4" fill="currentColor" opacity=".12"/>
-      <g class="body-g"><ellipse cx="60" cy="70" rx="31" ry="40" fill="${c}" stroke="currentColor" stroke-width="3"/>
-      <circle cx="48" cy="52" r="6" fill="#9BE0C0"/><circle cx="72" cy="78" r="8" fill="#9BE0C0"/><circle cx="70" cy="44" r="4" fill="#F4B93A"/><circle cx="46" cy="90" r="4" fill="#F4B93A"/>
-      ${crack}${crack2}</g></svg>`;
-  }
-  const s = [0,.62,.7,.78,.86,.94,1][stage];
-  const happy = mood>=60, sad = mood<30;
-  const eyes = happy
-    ? `<ellipse cx="-15" cy="-50" rx="6" ry="8" fill="currentColor"/><ellipse cx="15" cy="-50" rx="6" ry="8" fill="currentColor"/><circle cx="-13" cy="-53" r="2.3" fill="#fff"/><circle cx="17" cy="-53" r="2.3" fill="#fff"/>`
-    : sad
-    ? `<path d="M-22 -50 q7 6 14 0 M8 -50 q7 6 14 0" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><path d="M-21 -60 l10 4 M21 -60 l-10 4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>`
-    : `<circle cx="-15" cy="-50" r="5.5" fill="currentColor"/><circle cx="15" cy="-50" r="5.5" fill="currentColor"/>`;
-  const mouth = happy
-    ? `<path d="M-12 -33 q12 14 24 0 z" fill="currentColor"/><path d="M-6 -28 q6 4 12 0" fill="#E84393"/>`
-    : sad
-    ? `<path d="M-9 -27 q9 -8 18 0" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>`
-    : `<path d="M-8 -31 h16" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>`;
-  const tear = sad ? `<path d="M-20 -42 q-4 8 0 10 q4 -2 0 -10z" fill="#5DB8D6"/>` : "";
-  const cheeks = happy ? `<ellipse cx="-27" cy="-38" rx="6" ry="3.5" fill="#E84393" opacity=".35"/><ellipse cx="27" cy="-38" rx="6" ry="3.5" fill="#E84393" opacity=".35"/>` : "";
-  const feet = stage>=2 ? `<ellipse cx="-20" cy="-3" rx="12" ry="7" fill="${c}" stroke="currentColor" stroke-width="3"/><ellipse cx="20" cy="-3" rx="12" ry="7" fill="${c}" stroke="currentColor" stroke-width="3"/>` : "";
-  const ears = stage>=3 ? `<path d="M-30 -78 l-8 -26 l22 14 z M30 -78 l8 -26 l-22 14 z" fill="${c}" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>` : "";
-  const wings = stage>=4 ? `<path d="M-40 -58 C-66 -86 -92 -58 -76 -34 C-68 -24 -54 -30 -42 -36 Z M40 -58 C66 -86 92 -58 76 -34 C68 -24 54 -30 42 -36 Z" fill="#E9F0FF" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>` : "";
-  const crown = stage>=5 ? `<path d="M-18 -92 l6 -16 l7 9 l5 -13 l5 13 l7 -9 l6 16 z" fill="#F4B93A" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>` : "";
-  const belly = `<ellipse cx="0" cy="-22" rx="24" ry="16" fill="#fff" opacity=".45"/>`;
-  const sparkles = stage>=6 ? `<g fill="#F4B93A"><path d="M14 18 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3z"/><path d="M100 30 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2z"/><path d="M104 88 l2 4 l4 2 l-4 2 l-2 4 l-2 -4 l-4 -2 l4 -2z"/></g>` : "";
-  const acc = slot => { const it = ITEM_BY_ID[wear[slot]]; return it ? it.svg : ""; };
-  const extra = ITEM_BY_ID[wear.extra];
-  const under = extra && extra.layer==="under" ? extra.svg : "";
-  const front = extra && extra.layer!=="under" ? extra.svg : "";
-  const head = acc("head");
-  const lift = under ? 14*s : 0;
-  return `<svg viewBox="0 0 120 120" aria-hidden="true">${sparkles}<ellipse cx="60" cy="113" rx="${32*s+6}" ry="4" fill="currentColor" opacity=".12"/>
-    <g class="body-g"><g transform="translate(60 ${112-lift}) scale(${s})">
-      ${under}${wings}${ears}${feet}
-      <path d="M-46 -40 C-46 -78 -24 -92 0 -92 C24 -92 46 -78 46 -40 C46 -12 30 -6 0 -6 C-30 -6 -46 -12 -46 -40 Z" fill="${c}" stroke="currentColor" stroke-width="3.5"/>
-      ${belly}${acc("neck")}${head ? head : crown}${eyes}${tear}${cheeks}${mouth}${acc("eyes")}${front}
-    </g></g></svg>`;
-}
-
-// ---- rendering ----
-function renderGame(){
-  const st = stageIndex(), mood = effMood();
-  $("pet").innerHTML = petSVG(st, mood, tryOn ? Object.assign({}, game.wear, {[ITEM_BY_ID[tryOn].slot]:tryOn}) : game.wear);
-  $("coinChip").textContent = "🪙 " + (game.coins||0);
-  $("pet").classList.toggle("egg-wobble", st===0);
-  $("petName").textContent = game.name;
-  $("stage").textContent = STAGES[st].name;
-  if(st < STAGES.length-1){
-    const a = STAGES[st].xp, b = STAGES[st+1].xp;
-    $("xpLabel").textContent = st===0 ? "Bis zum Schlüpfen" : "Bis zum Wachsen";
-    $("xpNum").textContent = (b - game.xp) + " XP";
-    $("xpFill").style.width = Math.min(100, (game.xp-a)/(b-a)*100) + "%";
-  }else{
-    $("xpLabel").textContent = "Höchste Stufe erreicht";
-    $("xpNum").textContent = game.xp + " XP";
-    $("xpFill").style.width = "100%";
-  }
-  $("moodFill").style.width = mood + "%";
-  $("moodLabel").textContent = mood>=80 ? "überglücklich" : mood>=60 ? "fröhlich" : mood>=30 ? "geht so" : "traurig";
-  const dc = dayCorrect();
-  $("goalFill").style.width = Math.min(100, dc/DAILY_GOAL*100) + "%";
-  $("goalLabel").textContent = dc>=DAILY_GOAL ? "geschafft ✓" : dc + " / " + DAILY_GOAL;
-  $("comboChip").textContent = "🔥 Serie " + combo;
-  $("comboChip").classList.toggle("hot", combo>=3);
-  const ds = dayStreak();
-  $("daysChip").textContent = "📅 " + ds + (ds===1 ? " Tag" : " Tage") + " am Stück";
-  $("bestChip").textContent = "🏆 Rekord " + game.bestCombo;
-}
-
-let bubbleTimer;
-function say(text, ms=2200){
-  const b = $("bubble"); b.textContent = text; b.classList.add("show");
-  clearTimeout(bubbleTimer); bubbleTimer = setTimeout(()=>b.classList.remove("show"), ms);
-}
-function animatePet(cls){
-  const p = $("pet"); p.classList.remove("hop","droop"); void p.offsetWidth; p.classList.add(cls);
-}
-function floatXP(n, coins){
-  const f = $("float"); f.textContent = "+" + n + " XP" + (coins ? "\n+" + coins + " 🪙" : ""); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
-}
-const pick = a => a[Math.floor(Math.random()*a.length)];
-const LINES_OK = ["Lecker, Verben!","Mehr davon!","Mjam!","Stark!","Yes!","Läuft bei dir!","Nice!"];
-const LINES_BAD = ["Upsi…","Fast!","Nochmal üben?","Hmm…","Wird schon!"];
-const LINES_IDK = ["Kein Stress, Brudi.","Merk's dir!","Nächstes Mal!"];
-
-let celebrationQueue = [];
-function celebrate(title, text){
-  celebrationQueue.push({title,text});
-  if($("celebrate").hidden) showNextCelebration();
-}
-function showNextCelebration(){
-  const c = celebrationQueue.shift();
-  if(!c){ $("celebrate").hidden = true; $("go").focus(); return; }
-  $("celPet").innerHTML = petSVG(stageIndex(), 100);
-  $("celTitle").textContent = c.title;
-  $("celText").textContent = c.text;
-  $("celebrate").hidden = false;
-  $("celOk").focus();
-}
-$("celOk").onclick = showNextCelebration;
-$("celebrate").addEventListener("keydown", e=>{ if(e.key==="Escape"||e.key==="Enter"){ e.preventDefault(); showNextCelebration(); } });
-
-// ---- scoring ----
-function reward(ok, gaveUp, fixedMistake){
-  const t = today();
-  const moodNow = effMood();
-  const stBefore = stageIndex();
-  if(game.day !== t){ game.day = t; game.dayCorrect = 0; }
-  game.lastPlayed = t;
-  if(ok){
-    combo++;
-    if(combo > game.bestCombo) game.bestCombo = combo;
-    let xp = 10 + Math.min(combo-1, 10);
-    if(fixedMistake) xp += 15;
-    game.xp += xp;
-    game.mood = Math.min(100, moodNow + 6);
-    game.dayCorrect++;
-    let coins = COIN.correct;
-    if(combo>0 && combo%5===0) coins += COIN.combo5;
-    if(fixedMistake) coins += COIN.fixed;
-    addCoins(coins);
-    floatXP(xp, coins);
-    animatePet("hop");
-    if(fixedMistake) say("Fehler besiegt! +15");
-    else if(combo>0 && combo%5===0) say(combo + "er-Serie! 🔥");
-    else say(pick(LINES_OK));
-    if(game.dayCorrect === DAILY_GOAL){
-      game.dayStreak = (game.goalDay && daysBetween(game.goalDay, t)===1) ? game.dayStreak+1 : 1;
-      game.goalDay = t;
-      addCoins(COIN.dailyGoal);
-      celebrate("Tagesziel geschafft!", "Bonus: +" + COIN.dailyGoal + " 🪙. " + (game.dayStreak>1
-        ? game.dayStreak + " Tage am Stück! " + game.name + " ist mega stolz auf dich."
-        : game.name + " ist satt und glücklich. Komm morgen wieder, dann startet deine Tages-Serie!"));
-    }
-  }else{
-    combo = 0;
-    game.mood = Math.max(0, moodNow - (gaveUp ? 3 : 4));
-    animatePet("droop");
-    say(gaveUp ? pick(LINES_IDK) : pick(LINES_BAD));
-  }
-  const stAfter = stageIndex();
-  if(stAfter > stBefore){
-    addCoins(COIN.stageUp);
-    celebrate(stBefore===0 ? game.name + " ist geschlüpft!" : game.name + " ist gewachsen!",
-      "Neue Stufe: " + STAGES[stAfter].name + "." + (stAfter < STAGES.length-1 ? " Was kommt wohl als Nächstes?" : " Du bist ein Verb-Profi!") + " Geschenk: +" + COIN.stageUp + " 🪙" + (ITEMS.some(i=>i.minStage===stAfter) ? " und neue Sachen im Kleiderschrank!" : ""));
-  }
-  save();
-  renderGame();
-}
-
-// ---- deck ----
-function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
-function nextVerb(){
-  if(mode==="err"){
-    const pool = VERBS.filter(v=>mistakes[v.inf]);
-    if(!pool.length){ setMode("all"); return nextVerb(); }
-    const choice = pool.length>1 ? pool.filter(v=>v.inf!==lastInf) : pool;
-    return choice[Math.floor(Math.random()*choice.length)];
-  }
-  if(!deck.length){ deck = shuffle(VERBS.slice()); if(deck[deck.length-1].inf===lastInf) deck.unshift(deck.pop()); }
-  return deck.pop();
-}
-
-function newRound(){
-  current = nextVerb();
-  lastInf = current.inf;
-  givenForm = FORMS[Math.floor(Math.random()*3)];
-  const asked = FORMS.filter(f=>f!==givenForm);
-  $("givenLabel").textContent = LABEL[givenForm];
-  $("given").textContent = current[givenForm];
-  asked.forEach((f,i)=>{
-    const l = $("l"+i); l.textContent = LABEL[f];
-    if(HINT[f]){ const s=document.createElement("span"); s.className="hint"; s.textContent=HINT[f]; l.append(s); }
-    $("i"+i).value=""; $("i"+i).readOnly=false;
-    $("i"+i).lang = f==="de" ? "de" : "en";
-    $("f"+i).className="field"; $("c"+i).hidden=true;
-  });
-  $("feedback").textContent=""; $("feedback").className="feedback";
-  $("full").hidden=true;
-  $("go").textContent="Prüfen";
-  $("idk").hidden=false;
-  checked=false;
-  $("i0").focus();
-}
-
-function check(giveUp=false){
-  const asked = FORMS.filter(f=>f!==givenForm);
-  const cands = VERBS.filter(v=>norm(v[givenForm])===norm(current[givenForm]));
-  const inputs = [ $("i0").value, $("i1").value ];
-  let best = current, bestScore = -1;
-  for(const v of cands){
-    const s = asked.reduce((n,f,i)=>n+(matches(f,v,inputs[i])?1:0),0);
-    if(s>bestScore){ best=v; bestScore=s; }
-  }
-  let allOk = true;
-  asked.forEach((f,i)=>{
-    const ok = !giveUp && matches(f,best,inputs[i]);
-    if(!ok) allOk=false;
-    $("f"+i).className = "field " + (ok?"ok":"bad");
-    $("c"+i).hidden = false;
-    $("c"+i).textContent = ok ? "Richtig" : "Richtig wäre: " + best[f];
-    $("i"+i).readOnly = true;
-  });
-  total++;
-  const key = best.inf;
-  let fixed = false;
-  if(allOk){
-    right++;
-    if(mistakes[key]){ mistakes[key]--; if(mistakes[key]<=0){ delete mistakes[key]; fixed = true; } }
-    $("feedback").textContent = "Richtig!"; $("feedback").className="feedback ok";
-  }else{
-    mistakes[key] = 2;
-    $("feedback").textContent = giveUp ? "Kein Ding – jetzt weißt du's. Kommt auf die Fehlerliste" : "Kommt auf die Fehlerliste"; $("feedback").className="feedback bad";
-    const sh=$("sheet"); sh.classList.remove("shake"); void sh.offsetWidth; sh.classList.add("shake");
-  }
-  $("full").textContent = best.inf + " – " + best.past + " – " + best.de;
-  $("full").hidden = false;
-  $("score").textContent = right + " von " + total + " richtig";
-  $("go").textContent = "Weiter";
-  $("idk").hidden = true;
-  checked = true;
-  renderMistakes();
-  reward(allOk, giveUp, fixed);
-  if($("celebrate").hidden) $("go").focus();
-}
-
-function setMode(m){
-  mode = m;
-  $("modeAll").setAttribute("aria-pressed", m==="all");
-  $("modeErr").setAttribute("aria-pressed", m==="err");
-}
-
-let clearArmed = false;
-function renderMistakes(){
-  const list = VERBS.filter(v=>mistakes[v.inf]);
-  $("modeErr").textContent = "Meine Fehler (" + list.length + ")";
-  $("modeErr").disabled = !list.length;
-  const box = $("mistakeList");
-  box.textContent = "";
-  clearArmed = false;
-  if(!list.length){
-    const p=document.createElement("p"); p.className="empty";
-    p.textContent="Noch keine Fehler. Falsche Antworten landen automatisch hier.";
-    box.append(p); return;
-  }
-  const wrap=document.createElement("div"); wrap.className="list-wrap";
-  const t=document.createElement("table");
-  t.innerHTML="<thead><tr><th>Infinitive</th><th>Simple past</th><th>Deutsch</th><th>Noch richtig</th></tr></thead>";
-  const tb=document.createElement("tbody");
-  for(const v of list){
-    const tr=document.createElement("tr");
-    [v.inf,v.past,v.de,mistakes[v.inf]+"×"].forEach((x,i)=>{const td=document.createElement("td"); td.textContent=x; if(i===3) td.className="n"; tr.append(td);});
-    tb.append(tr);
-  }
-  t.append(tb); wrap.append(t); box.append(wrap);
-  const clear=document.createElement("button"); clear.className="link"; clear.type="button";
-  clear.textContent="Fehlerliste leeren";
-  clear.onclick=()=>{
-    if(!clearArmed){ clearArmed = true; clear.textContent = "Wirklich alle löschen? Nochmal tippen"; return; }
-    mistakes={}; save(); renderMistakes(); if(mode==="err"){ setMode("all"); newRound(); }
-  };
-  box.append(clear);
-}
-
-// ---- rename pet ----
-$("petName").onclick = ()=>{
-  const btn = $("petName");
-  const inp = document.createElement("input");
-  inp.className = "name-input"; inp.value = game.name; inp.maxLength = 18; inp.setAttribute("aria-label","Name für dein Monster");
-  btn.replaceWith(inp); inp.focus(); inp.select();
-  const done = ()=>{
-    const v = inp.value.trim();
-    if(v && v!==game.name){ game.name = v; save(); }
-    inp.replaceWith(btn); renderGame();
-  };
-  inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); inp.blur(); } if(e.key==="Escape"){ inp.value = game.name; inp.blur(); } });
-  inp.addEventListener("blur", done, {once:true});
+// ---- Backup ----
+let code = "";
+$("exportBtn").onclick = () => {
+  code = K.exportCode();
+  $("exportBox").value = code; $("exportBox").hidden = false;
+  $("copyBtn").hidden = false; $("saveFileBtn").hidden = false;
+  $("exportMsg").className = "msg"; $("exportMsg").textContent = "";
+  $("exportBox").focus(); $("exportBox").select();
 };
-
-
-// ---- wardrobe UI ----
-function itemState(it){
-  const st = stageIndex();
-  if(game.wear[it.slot]===it.id) return "worn";
-  if(game.owned.includes(it.id)) return "owned";
-  if(it.minStage && st < it.minStage) return "locked";
-  if(tryOn===it.id) return "trying";
-  return (game.coins||0) >= it.price ? "buy" : "poor";
-}
-function renderShop(){
-  const st = stageIndex();
-  $("shopNote").textContent = st===0
-    ? "Du hast " + (game.coins||0) + " 🪙. Du kannst schon einkaufen. Sehen kann man die Sachen, sobald " + game.name + " geschlüpft ist."
-    : "Du hast " + (game.coins||0) + " 🪙. Tippe etwas an, um es anzuprobieren. Nochmal tippen zum Kaufen.";
-  const body = $("shopBody"); body.textContent = "";
-  const previewStage = Math.max(1, st);
-  for(const [slot,label] of SLOTS){
-    const h = document.createElement("h3"); h.textContent = label; body.append(h);
-    const grid = document.createElement("div"); grid.className = "items";
-    for(const it of ITEMS.filter(i=>i.slot===slot)){
-      const state = itemState(it);
-      const b = document.createElement("button"); b.type = "button"; b.className = "item " + state;
-      const mini = document.createElement("span"); mini.className = "mini";
-      mini.innerHTML = petSVG(previewStage, 80, Object.assign({}, game.wear, {[slot]:it.id}));
-      const n = document.createElement("span"); n.className = "iname"; n.textContent = it.name;
-      const t = document.createElement("span"); t.className = "istat";
-      t.textContent = {
-        worn:"trägt er ✓", owned:"anziehen", trying:"kaufen: " + it.price + " 🪙",
-        buy: it.price + " 🪙", poor: it.price + " 🪙 (noch " + (it.price-(game.coins||0)) + ")",
-        locked: it.minStage ? "🔒 ab Stufe " + STAGES[it.minStage].name : ""
-      }[state];
-      b.append(mini, n, t);
-      b.onclick = () => itemClick(it);
-      grid.append(b);
-    }
-    body.append(grid);
+$("copyBtn").onclick = async () => {
+  try{ await navigator.clipboard.writeText(code); }
+  catch(e){ $("exportBox").select(); try{ document.execCommand("copy"); }catch(_){} }
+  $("exportMsg").className = "msg ok"; $("exportMsg").textContent = "Kopiert. Heb den Code gut auf, zum Beispiel in einer Notiz.";
+};
+$("saveFileBtn").onclick = () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([code], {type:"text/plain"}));
+  a.download = (P.name||"kruemel").replace(/[^\wäöüÄÖÜß-]+/g,"_") + "-spielstand-" + new Date().toISOString().slice(0,10) + ".txt";
+  document.body.append(a); a.click(); a.remove();
+  $("exportMsg").className = "msg ok"; $("exportMsg").textContent = "Datei gespeichert.";
+};
+let armed = false;
+function doImport(text){
+  const msg = $("importMsg");
+  if(!text.trim()){ msg.className = "msg bad"; msg.textContent = "Bitte zuerst einen Code einfügen."; return; }
+  if(!armed){ armed = true; $("importBtn").textContent = "Wirklich ersetzen? Nochmal tippen"; return; }
+  try{
+    K.importCode(text);
+    msg.className = "msg ok"; msg.textContent = "Geladen! Die Seite startet neu…";
+    setTimeout(()=>location.reload(), 700);
+  }catch(e){
+    msg.className = "msg bad"; msg.textContent = e.message;
+    armed = false; $("importBtn").textContent = "Spielstand laden";
   }
 }
-function itemClick(it){
-  const state = itemState(it);
-  if(state==="worn"){ delete game.wear[it.slot]; tryOn = null; save(); say("Ausgezogen."); }
-  else if(state==="owned"){ game.wear[it.slot] = it.id; tryOn = null; save(); animatePet("hop"); say("Schick!"); }
-  else if(state==="locked"){ say("Erst wenn ich " + STAGES[it.minStage].name + " bin!"); }
-  else if(state==="poor"){ tryOn = it.id; say("Noch " + (it.price-(game.coins||0)) + " 🪙 sammeln!"); }
-  else if(state==="buy"){ tryOn = it.id; say("Steht mir, oder?"); }
-  else if(state==="trying"){
-    game.coins -= it.price; game.owned.push(it.id); game.wear[it.slot] = it.id; tryOn = null;
-    save(); animatePet("hop"); say("Juhu, danke!");
-  }
-  renderGame(); renderShop();
-}
-function openShop(open){
-  $("shop").hidden = !open;
-  $("wardrobeBtn").setAttribute("aria-expanded", open);
-  $("wardrobeBtn").textContent = open ? "👕 Kleiderschrank schließen" : "👕 Kleiderschrank öffnen";
-  tryOn = null;
-  if(open){ renderShop(); $("shop").scrollIntoView({behavior:"smooth", block:"nearest"}); }
-  renderGame();
-}
-$("wardrobeBtn").onclick = () => openShop($("shop").hidden);
-$("shopClose").onclick = () => { openShop(false); $("wardrobeBtn").focus(); };
-
-$("go").onclick = ()=> checked ? newRound() : check();
-$("idk").onclick = ()=> { if(!checked) check(true); };
-$("i0").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); if(checked) newRound(); else $("i1").focus(); }});
-$("i1").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); checked ? newRound() : check(); }});
-$("modeAll").onclick=()=>{ if(mode!=="all"){ setMode("all"); newRound(); } };
-$("modeErr").onclick=()=>{ if(mode!=="err"){ setMode("err"); newRound(); } };
-
-migrateCoins();
-renderMistakes();
-renderGame();
-newRound();
-function showIntro(){
-  if(pendingIntro===null) return;
-  const earlier = pendingIntro; pendingIntro = null;
-  celebrate("Neu: " + game.name + "s Kleiderschrank!", earlier>0
-    ? "Für alles, was du schon geübt hast, bekommst du " + earlier + " 🪙, plus 20 🪙 Startgeschenk. Such " + game.name + " was Schickes aus!"
-    : "Als Startgeschenk bekommst du 20 🪙. Für jede richtige Antwort gibt es mehr. Such " + game.name + " was Schickes aus!");
-}
-setTimeout(showIntro, 600);
-setTimeout(()=>{
-  const m = effMood();
-  if(game.lastPlayed && m < 40) say("Ich hab dich vermisst…", 3500);
-  else if(!game.lastPlayed) say("Hallo! Füttere mich mit Verben!", 3500);
-  else say("Hi! Weiter geht's!", 2500);
-}, 400);
+$("importBox").addEventListener("input", ()=>{ armed = false; $("importBtn").textContent = "Spielstand laden"; $("importMsg").textContent = ""; });
+$("importBtn").onclick = () => doImport($("importBox").value);
+$("importFile").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  $("importBox").value = (await f.text()).trim();
+  armed = false; $("importBtn").textContent = "Spielstand laden";
+  $("importMsg").className = "msg"; $("importMsg").textContent = "Datei gelesen. Jetzt auf „Spielstand laden“ tippen.";
+};
+})();
 </script>
 </body>
 </html>

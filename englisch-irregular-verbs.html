@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Irregular verbs – Lernwelt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📘</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="./">← Zur Übersicht</a>
+  <header>
+    <h1>Irregular verbs</h1>
+    <p class="score" id="score">Noch keine Antworten</p>
+  </header>
+
+  <section id="buddy" aria-label="Dein Monster"></section>
+
+  <div class="modes" role="group" aria-label="Übungsmodus">
+    <button type="button" id="modeAll" aria-pressed="true">Alle Verben</button>
+    <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
+  </div>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <p class="given-label" id="givenLabel"></p>
+    <p class="given" id="given"></p>
+    <div class="field" id="f0"><label for="i0" id="l0"></label><input id="i0" autocomplete="off" autocapitalize="off" spellcheck="false"><p class="correction" id="c0" hidden></p></div>
+    <div class="field" id="f1"><label for="i1" id="l1"></label><input id="i1" autocomplete="off" autocapitalize="off" spellcheck="false"><p class="correction" id="c1" hidden></p></div>
+    <div class="actions">
+      <button type="button" class="primary" id="go">Prüfen</button>
+      <button type="button" class="secondary" id="idk">Keine Ahnung, Brudi!</button>
+      <p class="feedback" id="feedback"></p>
+    </div>
+    <p class="full" id="full" hidden></p>
+  </section>
+
+  <section class="mistakes" aria-labelledby="mh">
+    <h2 id="mh">Fehlerliste</h2>
+    <p>Ein Verb verschwindet von der Liste, wenn du es zweimal richtig hattest. Jeder besiegte Fehler gibt Bonus-XP. Dreimal richtig hintereinander heißt: gemeistert 🎓</p>
+    <div id="mistakeList"></div>
+  </section>
+</main>
+
+<script src="kruemel.js"></script>
+<script>
+const VERBS = [
+["be","was / were","sein"],["beat","beat","schlagen; besiegen"],["become","became","werden"],
+["begin","began","beginnen; anfangen"],["bet","bet","wetten"],["bite","bit","beißen"],
+["break","broke","(zer)brechen; kaputt machen"],["bring","brought","(mit)bringen"],["build","built","bauen"],
+["burn","burnt / burned","(ver)brennen"],["buy","bought","kaufen"],["catch","caught","fangen"],
+["choose","chose","(aus)wählen"],["come","came","kommen"],["cost","cost","kosten"],["cut","cut","schneiden"],
+["deal (with)","dealt (with)","sich befassen (mit); umgehen (mit)"],["do","did","machen; tun"],
+["draw","drew","zeichnen; ziehen"],["dream","dreamt / dreamed","träumen"],["drink","drank","trinken"],
+["drive","drove","fahren"],["eat","ate","essen"],["fall","fell","(hin)fallen"],["feed","fed","füttern; ernähren"],
+["feel","felt","fühlen"],["fight","fought","kämpfen; (sich) streiten"],["find","found","finden"],
+["fit","fit / fitted","passen"],["fly","flew","fliegen"],["forget","forgot","vergessen"],
+["forgive","forgave","vergeben; verzeihen"],["freeze","froze","gefrieren; erstarren"],["get","got","bekommen; erhalten"],
+["give","gave","geben"],["go","went","gehen; fahren"],["grow","grew","wachsen; anbauen; züchten"],
+["hang","hung","hängen"],["have","had","haben"],["hear","heard","hören"],["hide","hid","(sich) verstecken"],
+["hit","hit","schlagen; treffen"],["hold","held","(fest)halten"],
+["hurt","hurt","verletzen; sich wehtun"],["keep","kept","(auf)bewahren; behalten"],["know","knew","kennen; wissen"],
+["lead","led","(an)führen"],["learn","learnt / learned","lernen"],["leave","left","(ver)lassen"],["let","let","lassen"],
+["lie","lay","liegen"],["lose","lost","verlieren"],["make","made","machen; tun"],["mean","meant","bedeuten; meinen"],
+["meet","met","treffen"],["pay","paid","(be)zahlen"],["put","put","legen; setzen; stellen"],["read","read","lesen"],
+["ride","rode","fahren; reiten"],["ring","rang","klingeln; läuten"],["run","ran","laufen; rennen"],["say","said","sagen"],
+["see","saw","sehen"],["sell","sold","verkaufen"],["send","sent","senden; verschicken"],["set up","set up","erbauen; errichten"],
+["shoot","shot","schießen"],["show","showed","zeigen"],["sing","sang","singen"],["sink","sank","untergehen; sinken"],
+["sit","sat","sitzen"],["sleep","slept","schlafen"],["smell","smelt / smelled","riechen; duften"],["speak","spoke","sprechen"],
+["spell","spelt / spelled","buchstabieren"],["spend","spent","ausgeben; verbringen"],["stand","stood","stehen"],
+["steal","stole","stehlen"],["swim","swam","schwimmen"],["take","took","nehmen"],["teach","taught","unterrichten; lehren; beibringen"],
+["tell","told","erzählen"],["think","thought","(nach)denken; glauben"],["throw","threw","werfen"],
+["understand","understood","verstehen"],["wake up","woke up","(auf)wachen; (auf)wecken"],["wear","wore","anhaben; tragen"],
+["win","won","gewinnen; siegen"],["write","wrote","schreiben"]
+].map(([inf,past,de])=>({inf,past,de}));
+const TRAINER_ID = "irregular-verbs";
+const K = Kruemel;
+const $ = id => document.getElementById(id);
+const FORMS = ["inf","past","de"];
+const LABEL = {inf:"Infinitive", past:"Simple past", de:"Deutsch"};
+const HINT  = {inf:"", past:"", de:" – eine Bedeutung reicht"};
+const META = K.TRAINERS.find(t=>t.id===TRAINER_ID);
+
+const norm = s => s.toLowerCase().replace(/ß/g,"ss").replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue")
+  .replace(/[()]/g,"").replace(/[.!?]+$/,"").replace(/\s+/g," ").trim();
+function variants(form, value){
+  const parts = value.split(form==="de" ? ";" : "/").map(s=>s.trim()).filter(Boolean);
+  const out = new Set();
+  for(const p of parts){
+    const without = p.replace(/\([^)]*\)/g,"").replace(/\s+/g," ").trim();
+    const withIt  = p.replace(/[()]/g,"").replace(/\s+/g," ").trim();
+    for(const v of [without, withIt]){
+      out.add(norm(v));
+      if(form==="de" && /^sich /.test(v)) out.add(norm(v.slice(5)));
+    }
+  }
+  return out;
+}
+function matches(form, verb, input){
+  const n = norm(input);
+  if(!n) return false;
+  const ok = variants(form, verb[form]);
+  if(ok.has(n)) return true;
+  if(form!=="de"){
+    const bits = n.split(/\s*[\/,]\s*/).filter(Boolean);
+    return bits.length>1 && bits.every(b=>ok.has(b));
+  }
+  return false;
+}
+
+// ---- Trainer-Daten (Fehler, Meisterung, Rekord) ----
+const T = K.trainer(TRAINER_ID);
+const saveT = () => K.saveTrainer(TRAINER_ID, T);
+const mastered = () => VERBS.filter(v=>(T.mastery[v.inf]||0) >= K.MASTERY).length;
+
+let mode = "all", deck = [], current = null, givenForm = "inf", checked = false, lastInf = null;
+let right = 0, total = 0, combo = 0;
+
+K.mount($("buddy"), {
+  greeting: "Verben! Lecker!",
+  chips: () => [
+    {text:"🔥 Serie " + combo, cls: combo>=3 ? "hot" : ""},
+    {text:"🏆 Rekord " + T.bestCombo},
+    {text:"🎓 " + mastered() + " / " + VERBS.length}
+  ]
+});
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function nextVerb(){
+  if(mode==="err"){
+    const pool = VERBS.filter(v=>T.mistakes[v.inf]);
+    if(!pool.length){ setMode("all"); return nextVerb(); }
+    const choice = pool.length>1 ? pool.filter(v=>v.inf!==lastInf) : pool;
+    return choice[Math.floor(Math.random()*choice.length)];
+  }
+  if(!deck.length){ deck = shuffle(VERBS.slice()); if(deck[deck.length-1].inf===lastInf) deck.unshift(deck.pop()); }
+  return deck.pop();
+}
+
+function newRound(){
+  current = nextVerb();
+  lastInf = current.inf;
+  givenForm = FORMS[Math.floor(Math.random()*3)];
+  const asked = FORMS.filter(f=>f!==givenForm);
+  $("givenLabel").textContent = LABEL[givenForm];
+  $("given").textContent = current[givenForm];
+  asked.forEach((f,i)=>{
+    const l = $("l"+i); l.textContent = LABEL[f];
+    if(HINT[f]){ const s=document.createElement("span"); s.className="hint"; s.textContent=HINT[f]; l.append(s); }
+    $("i"+i).value=""; $("i"+i).readOnly=false;
+    $("i"+i).lang = f==="de" ? "de" : "en";
+    $("f"+i).className="field"; $("c"+i).hidden=true;
+  });
+  $("feedback").textContent=""; $("feedback").className="feedback";
+  $("full").hidden=true;
+  $("go").textContent="Prüfen";
+  $("idk").hidden=false;
+  checked=false;
+  $("i0").focus();
+}
+
+function check(giveUp=false){
+  const asked = FORMS.filter(f=>f!==givenForm);
+  const cands = VERBS.filter(v=>norm(v[givenForm])===norm(current[givenForm]));
+  const inputs = [ $("i0").value, $("i1").value ];
+  let best = current, bestScore = -1;
+  for(const v of cands){
+    const s = asked.reduce((n,f,i)=>n+(matches(f,v,inputs[i])?1:0),0);
+    if(s>bestScore){ best=v; bestScore=s; }
+  }
+  let allOk = true;
+  asked.forEach((f,i)=>{
+    const ok = !giveUp && matches(f,best,inputs[i]);
+    if(!ok) allOk=false;
+    $("f"+i).className = "field " + (ok?"ok":"bad");
+    $("c"+i).hidden = false;
+    $("c"+i).textContent = ok ? "Richtig" : "Richtig wäre: " + best[f];
+    $("i"+i).readOnly = true;
+  });
+  total++;
+  const key = best.inf;
+  let fixed = false;
+  const masteredBefore = mastered();
+  if(allOk){
+    right++; combo++;
+    if(combo > T.bestCombo) T.bestCombo = combo;
+    T.mastery[key] = (T.mastery[key]||0) + 1;
+    if(T.mistakes[key]){ T.mistakes[key]--; if(T.mistakes[key]<=0){ delete T.mistakes[key]; fixed = true; } }
+    $("feedback").textContent = T.mastery[key]===K.MASTERY ? "Richtig! Gemeistert 🎓" : "Richtig!";
+    $("feedback").className="feedback ok";
+  }else{
+    combo = 0;
+    T.mistakes[key] = 2;
+    T.mastery[key] = 0;
+    $("feedback").textContent = giveUp ? "Kein Ding – jetzt weißt du's. Kommt auf die Fehlerliste" : "Kommt auf die Fehlerliste";
+    $("feedback").className="feedback bad";
+    const sh=$("sheet"); sh.classList.remove("shake"); void sh.offsetWidth; sh.classList.add("shake");
+  }
+  saveT();
+  $("full").textContent = best.inf + " – " + best.past + " – " + best.de;
+  $("full").hidden = false;
+  $("score").textContent = right + " von " + total + " richtig";
+  $("go").textContent = "Weiter";
+  $("idk").hidden = true;
+  checked = true;
+  renderMistakes();
+  const r = {ok:allOk, gaveUp:giveUp, combo, fixed};
+  K.react(K.award(TRAINER_ID, r), r);
+  if(masteredBefore < VERBS.length && mastered() === VERBS.length && META && META.reward) K.grantReward(META.reward);
+  if($("kCel").hidden) $("go").focus();
+}
+
+function setMode(m){
+  mode = m;
+  $("modeAll").setAttribute("aria-pressed", m==="all");
+  $("modeErr").setAttribute("aria-pressed", m==="err");
+}
+
+let clearArmed = false;
+function renderMistakes(){
+  const list = VERBS.filter(v=>T.mistakes[v.inf]);
+  $("modeErr").textContent = "Meine Fehler (" + list.length + ")";
+  $("modeErr").disabled = !list.length;
+  const box = $("mistakeList");
+  box.textContent = "";
+  clearArmed = false;
+  if(!list.length){
+    const p=document.createElement("p"); p.className="empty";
+    p.textContent="Noch keine Fehler. Falsche Antworten landen automatisch hier.";
+    box.append(p); return;
+  }
+  const wrap=document.createElement("div"); wrap.className="list-wrap";
+  const t=document.createElement("table");
+  t.innerHTML="<thead><tr><th>Infinitive</th><th>Simple past</th><th>Deutsch</th><th>Noch richtig</th></tr></thead>";
+  const tb=document.createElement("tbody");
+  for(const v of list){
+    const tr=document.createElement("tr");
+    [v.inf,v.past,v.de,T.mistakes[v.inf]+"×"].forEach((x,i)=>{const td=document.createElement("td"); td.textContent=x; if(i===3) td.className="n"; tr.append(td);});
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); box.append(wrap);
+  const clear=document.createElement("button"); clear.className="link"; clear.type="button";
+  clear.textContent="Fehlerliste leeren";
+  clear.onclick=()=>{
+    if(!clearArmed){ clearArmed = true; clear.textContent = "Wirklich alle löschen? Nochmal tippen"; return; }
+    T.mistakes={}; saveT(); renderMistakes(); if(mode==="err"){ setMode("all"); newRound(); }
+  };
+  box.append(clear);
+}
+
+$("go").onclick = ()=> checked ? newRound() : check();
+$("idk").onclick = ()=> { if(!checked) check(true); };
+$("i0").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); if(checked) newRound(); else $("i1").focus(); }});
+$("i1").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); checked ? newRound() : check(); }});
+$("modeAll").onclick=()=>{ if(mode!=="all"){ setMode("all"); newRound(); } };
+$("modeErr").onclick=()=>{ if(mode!=="err"){ setMode("err"); newRound(); } };
+
+renderMistakes();
+newRound();
+</script>
+</body>
+</html>
