@@ -20,3 +20,9 @@ Statische Lern-Seite für GitHub Pages. Alle Fortschritte liegen im Browser (loc
 ## Regeln, damit kein Fortschritt verloren geht
 - Speicher-Schlüssel (`kruemel:profile`, `kruemel:trainer:<id>`) und Trainer-IDs nie umbenennen.
 - Felder im Profil nur ergänzen. Bei echten Formatänderungen `SCHEMA` erhöhen und in `upgrade()` umrechnen.
+
+## Zoo
+- Jedes Tier steht in `profile.pets`, das wachsende Tier in `profile.activePet`.
+- Neue Tierart: in `SPECIES` (kruemel.js) eintragen mit `name`, `rarity` (common, rare, epic, legendary, mythic), `def` (Standardname), `forms` (4 Namen) und `draw(stufe 1–4, laune)`.
+- Chancen und Preis fürs Neuziehen: `RARITY` und `K.REROLL_COST`.
+- Charaktere mit ihren Sprüchen: `CHARS`.

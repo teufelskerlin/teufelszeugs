@@ -327,7 +327,12 @@ function stopSpeed(finished){
       K.bonusCoins(SPEED_RECORD_COINS);
       K.say("Rekord! Wahnsinn!", 3000);
     }else{
-      $("speedResultText").textContent = "Richtige Antworten. Dein Rekord: " + old + (old - score <= 2 ? ". Ganz knapp!" : ".");
+      const diff = old - score;
+      $("speedResultText").textContent =
+        old === 0 ? "Noch kein Treffer. Probier's gleich nochmal!" :
+        diff === 0 ? "Genau dein Rekord eingestellt! Nächstes Mal knackst du ihn." :
+        diff <= 2 ? "Nur " + diff + " unter deinem Rekord von " + old + ". Ganz knapp!" :
+        "Richtige Antworten. Dein Rekord: " + old + ".";
     }
     $("speedAgain").focus();
   }
