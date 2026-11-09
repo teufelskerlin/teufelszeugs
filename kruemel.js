@@ -44,7 +44,8 @@ const today = () => dayStr();
 function freshProfile(){
   return {version:SCHEMA, name:"Krümel", xp:0, coins:20, mood:70, owned:[], wear:{},
     lastPlayed:null, day:null, dayCorrect:0, goalDay:null, dayStreak:0,
-    trainerDay:{day:null, counts:{}}, intro:null};
+    trainerDay:{day:null, counts:{}}, intro:null,
+    bestDayStreak:0, time:{total:0, day:null, today:0, trainers:{}}};
 }
 function freshTrainer(){ return {mistakes:{}, mastery:{}, bestCombo:0}; }
 
@@ -68,6 +69,7 @@ function upgrade(p){
   // Spätere Formatänderungen hier nachrüsten: if(p.version < 2){ ...; p.version = 2; }
   const base = freshProfile();
   for(const k in base) if(p[k] === undefined) p[k] = base[k];
+  if((p.dayStreak||0) > (p.bestDayStreak||0)) p.bestDayStreak = p.dayStreak;
   p.version = SCHEMA;
   return p;
 }
@@ -217,7 +219,9 @@ K.award = function(trainerId, r){
       P.dayStreak = (P.goalDay && daysBetween(P.goalDay, t)===1) ? P.dayStreak+1 : 1;
       P.goalDay = t;
       coins += COIN.dailyGoal;
-      res.events.push({type:"goal"});
+      const record = P.dayStreak > (P.bestDayStreak||0);
+      if(record) P.bestDayStreak = P.dayStreak;
+      res.events.push({type:"goal", record: record && P.dayStreak > 1});
     }
     if(n === K.TRAINER_DAILY_FULL + 1) res.events.push({type:"full"});
     P.coins += coins; res.coins = coins;
@@ -241,6 +245,44 @@ K.grantReward = function(itemId){
   K.save();
   celebrate("Spezial-Teil freigeschaltet!", "Du hast alles gemeistert und bekommst: " + it.name + ". Du findest es im Kleiderschrank.");
   return true;
+};
+
+
+// Bonus-Münzen (z. B. für Rekorde)
+K.bonusCoins = function(n){
+  P.coins += n; K.save(); K.render();
+  const c = document.getElementById("kCoins"); if(c){ c.classList.remove("bump"); void c.offsetWidth; c.classList.add("bump"); }
+};
+
+// =====================================================================
+// Übungszeit – zählt nur aktive Zeit (Tab sichtbar, Eingabe in den letzten 60 s)
+// =====================================================================
+const IDLE_MS = 60000, TICK = 5;
+function timeRoll(o){ const t = today(); if(o.day !== t){ o.day = t; o.today = 0; } return o; }
+K.trackTime = function(trainerId){
+  let last = Date.now();
+  const poke = () => { last = Date.now(); };
+  ["keydown","pointerdown","input"].forEach(ev => document.addEventListener(ev, poke, true));
+  setInterval(() => {
+    if(document.visibilityState !== "visible" || Date.now() - last > IDLE_MS) return;
+    const tm = timeRoll(P.time);
+    tm.total += TICK; tm.today += TICK;
+    const tr = timeRoll(tm.trainers[trainerId] = tm.trainers[trainerId] || {total:0, day:null, today:0});
+    tr.total += TICK; tr.today += TICK;
+    K.save();
+  }, TICK*1000);
+};
+K.timeStats = function(trainerId){
+  const t = today();
+  const o = trainerId ? (P.time.trainers[trainerId] || {total:0, day:null, today:0}) : P.time;
+  return {today: o.day === t ? o.today : 0, total: o.total};
+};
+K.fmtTime = function(sec){
+  const m = Math.floor(sec/60);
+  if(m < 1) return "unter 1 Min";
+  if(m < 60) return m + " Min";
+  const h = Math.floor(m/60), r = m % 60;
+  return h + " Std" + (r ? " " + r + " Min" : "");
 };
 
 // =====================================================================
@@ -357,7 +399,7 @@ K.render = function(){
   $("kGoalLabel").textContent = dc>=K.DAILY_GOAL ? "geschafft ✓" : dc + " / " + K.DAILY_GOAL;
   const ds = K.dayStreak();
   const chips = (opts.chips ? opts.chips() : []).concat([
-    {text:"📅 " + ds + (ds===1?" Tag":" Tage") + " am Stück"},
+    {text:"📅 " + ds + (ds===1?" Tag":" Tage") + " am Stück" + ((P.bestDayStreak||0) > 0 ? " (Rekord " + P.bestDayStreak + ")" : "")},
     {text:"🪙 " + P.coins, cls:"coins", id:"kCoins"}
   ]);
   $("kChips").innerHTML = chips.map(c=>`<span class="chip ${c.cls||""}"${c.id?` id="${c.id}"`:""}>${esc(c.text)}</span>`).join("");
@@ -392,6 +434,7 @@ K.react = function(res, r){
     K.say(r.gaveUp ? pick(LINES_IDK) : pick(LINES_BAD));
   }
   for(const e of res.events){
+    if(e.type==="goal" && e.record) celebrate("Neuer Rekord: " + P.dayStreak + " Tage am Stück!", "So lange hast du noch nie durchgehalten. " + P.name + " platzt vor Stolz!");
     if(e.type==="goal") celebrate("Tagesziel geschafft!", "Bonus: +" + COIN.dailyGoal + " 🪙. " + (P.dayStreak>1 ? P.dayStreak + " Tage am Stück! " + P.name + " ist mega stolz auf dich." : P.name + " ist satt und glücklich. Komm morgen wieder, dann startet deine Tages-Serie!"));
     if(e.type==="stage") celebrate(e.from===0 ? P.name + " ist geschlüpft!" : P.name + " ist gewachsen!", "Neue Stufe: " + STAGES[e.to].name + ". Geschenk: +" + COIN.stageUp + " 🪙" + (ITEMS.some(i=>i.minStage===e.to) ? " und neue Sachen im Kleiderschrank!" : "."));
     if(e.type==="full") celebrate("Pause für dieses Thema?", "Du hast heute schon " + K.TRAINER_DAILY_FULL + " richtige Antworten hier. Ab jetzt gibt es in diesem Trainer halbe XP und weniger Münzen. In einem anderen Trainer gibt es wieder volle Belohnung!");
@@ -403,9 +446,11 @@ K.react = function(res, r){
 // ---- Feier-Dialog ----
 const queue = [];
 let returnFocus = null;
+let holding = false;
+K.hold = function(on){ holding = on; if(!on && queue.length && $("kCel") && $("kCel").hidden) nextCelebration(); };
 function celebrate(title, text){
   queue.push({title, text});
-  if($("kCel") && $("kCel").hidden) nextCelebration();
+  if(!holding && $("kCel") && $("kCel").hidden) nextCelebration();
 }
 K.celebrate = celebrate;
 function nextCelebration(){

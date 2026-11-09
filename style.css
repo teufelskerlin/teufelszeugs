@@ -176,3 +176,16 @@ td.n{color:var(--bad);font-weight:700;white-space:nowrap}
 .msg{font-weight:700;margin:0}
 .msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
 .backup h3{font-size:1rem;margin:1rem 0 .25rem}
+
+/* ---- Speed Challenge ---- */
+.speedbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem;margin-bottom:1rem;font-weight:700;font-variant-numeric:tabular-nums}
+.speedbar[hidden]{display:none}
+.speedbar .track{height:12px;margin:0}
+.speedbar .fill{transition:width .1s linear}
+.speedbar.low #speedTime{color:var(--bad)}
+.speed-title{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1.15;color:var(--ink);margin:.1rem 0 .5rem}
+.speed-text{color:var(--muted);margin:0 0 1rem}
+.speed-score{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:4rem;line-height:1;color:var(--ink);margin:.25rem 0}
+.modes button.speed[aria-pressed="true"]{background:var(--goal);color:#1C2333}
+.stats-row{display:flex;gap:.4rem;flex-wrap:wrap;margin:-.25rem 0 1rem}
+.card .time{font-size:.85rem;color:var(--muted);margin-top:.35rem}

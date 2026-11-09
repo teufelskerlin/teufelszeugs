@@ -20,6 +20,7 @@
   </header>
 
   <section id="buddy" aria-label="Dein Monster"></section>
+  <div class="stats-row" id="timeRow"></div>
 
   <div id="trainers"></div>
 
@@ -57,6 +58,12 @@ document.title = P.name + "s Lernwelt";
 
 K.mount($("buddy"), {greeting:"Was lernen wir heute?"});
 
+// ---- Übungszeit gesamt ----
+const all = K.timeStats();
+for(const txt of ["⏱ Heute geübt: " + K.fmtTime(all.today), "⏱ Insgesamt: " + K.fmtTime(all.total)]){
+  const c = document.createElement("span"); c.className = "chip"; c.textContent = txt; $("timeRow").append(c);
+}
+
 // ---- Trainer-Karten, nach Fach gruppiert ----
 const box = $("trainers");
 const subjects = [...new Set(K.TRAINERS.map(t=>t.subject))];
@@ -78,7 +85,10 @@ for(const s of subjects){
     if(mastered >= t.total) m1.className = "badge";
     const m2 = document.createElement("span"); m2.textContent = open ? open + " Fehler offen" : "";
     meta.append(m1, m2);
-    a.append(h3, p, bar, meta);
+    const ts = K.timeStats(t.id);
+    const time = document.createElement("div"); time.className = "time";
+    time.textContent = ts.total ? "⏱ Heute " + K.fmtTime(ts.today) + ", insgesamt " + K.fmtTime(ts.total) : "⏱ Noch nicht geübt";
+    a.append(h3, p, bar, meta, time);
     grid.append(a);
   }
 }

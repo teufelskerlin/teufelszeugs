@@ -23,9 +23,25 @@
   <div class="modes" role="group" aria-label="Übungsmodus">
     <button type="button" id="modeAll" aria-pressed="true">Alle Verben</button>
     <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
+    <button type="button" id="modeSpeed" class="speed" aria-pressed="false">⚡ Speed</button>
   </div>
 
   <section class="sheet" id="sheet" aria-live="polite">
+    <div class="speedbar" id="speedBar" hidden><span id="speedTime">1:00</span><div class="track"><div class="fill goal" id="speedFill"></div></div><span id="speedScore">0 ✓</span></div>
+    <div id="speedStart" hidden>
+      <p class="given-label">Speed Challenge</p>
+      <p class="speed-title">60 Sekunden. Wie viele schaffst du?</p>
+      <p class="speed-text">Es wird immer nur eine Form gefragt. Enter schickt ab, und sofort kommt das nächste Verb. Neuer Rekord gibt Bonus-Münzen!</p>
+      <p class="speed-text" id="speedBestText"></p>
+      <button type="button" class="primary" id="speedGo">Los geht's!</button>
+    </div>
+    <div id="speedEnd" hidden>
+      <p class="given-label">Zeit um!</p>
+      <p class="speed-score" id="speedResult">0</p>
+      <p class="speed-text" id="speedResultText"></p>
+      <button type="button" class="primary" id="speedAgain">Nochmal!</button>
+    </div>
+    <div id="quiz">
     <p class="given-label" id="givenLabel"></p>
     <p class="given" id="given"></p>
     <div class="field" id="f0"><label for="i0" id="l0"></label><input id="i0" autocomplete="off" autocapitalize="off" spellcheck="false"><p class="correction" id="c0" hidden></p></div>
@@ -36,6 +52,7 @@
       <p class="feedback" id="feedback"></p>
     </div>
     <p class="full" id="full" hidden></p>
+    </div>
   </section>
 
   <section class="mistakes" aria-labelledby="mh">
@@ -117,6 +134,10 @@ const saveT = () => K.saveTrainer(TRAINER_ID, T);
 const mastered = () => VERBS.filter(v=>(T.mastery[v.inf]||0) >= K.MASTERY).length;
 
 let mode = "all", deck = [], current = null, givenForm = "inf", checked = false, lastInf = null;
+let speed = null; // {end, score, timer, askForm}
+const SPEED_SECONDS = 60, SPEED_RECORD_COINS = 5;
+T.speedBest = T.speedBest || 0;
+K.trackTime(TRAINER_ID);
 let right = 0, total = 0, combo = 0;
 
 K.mount($("buddy"), {
@@ -124,7 +145,8 @@ K.mount($("buddy"), {
   chips: () => [
     {text:"🔥 Serie " + combo, cls: combo>=3 ? "hot" : ""},
     {text:"🏆 Rekord " + T.bestCombo},
-    {text:"🎓 " + mastered() + " / " + VERBS.length}
+    {text:"🎓 " + mastered() + " / " + VERBS.length},
+    {text:"⚡ Speed-Rekord " + T.speedBest}
   ]
 });
 
@@ -214,9 +236,103 @@ function check(giveUp=false){
 }
 
 function setMode(m){
+  if(speed && speed.timer) stopSpeed(false);
   mode = m;
   $("modeAll").setAttribute("aria-pressed", m==="all");
   $("modeErr").setAttribute("aria-pressed", m==="err");
+  $("modeSpeed").setAttribute("aria-pressed", m==="speed");
+  const sp = m==="speed";
+  $("speedStart").hidden = !sp; $("speedEnd").hidden = true; $("speedBar").hidden = true;
+  $("quiz").hidden = sp;
+  $("f1").hidden = false;
+  if(sp){ $("speedBestText").textContent = T.speedBest ? "Dein Rekord: " + T.speedBest + " richtige." : "Noch kein Rekord. Leg los!"; $("speedGo").focus(); }
+}
+
+// ---- Speed Challenge ----
+function startSpeed(){
+  combo = 0;
+  speed = {end: Date.now() + SPEED_SECONDS*1000, score: 0, timer: null, askForm: null};
+  K.hold(true);
+  $("speedStart").hidden = true; $("speedEnd").hidden = true;
+  $("speedBar").hidden = false; $("quiz").hidden = false; $("f1").hidden = true;
+  $("go").textContent = "Prüfen"; $("idk").hidden = false; $("full").hidden = true;
+  $("feedback").textContent = ""; $("feedback").className = "feedback";
+  nextSpeed();
+  tickSpeed();
+  speed.timer = setInterval(tickSpeed, 100);
+}
+function tickSpeed(){
+  const left = Math.max(0, speed.end - Date.now());
+  const sec = Math.ceil(left/1000);
+  $("speedTime").textContent = Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0");
+  $("speedFill").style.width = (left / (SPEED_SECONDS*1000) * 100) + "%";
+  $("speedBar").classList.toggle("low", sec <= 10);
+  $("speedScore").textContent = speed.score + " ✓";
+  if(left <= 0) stopSpeed(true);
+}
+function nextSpeed(){
+  current = nextVerb(); lastInf = current.inf;
+  givenForm = FORMS[Math.floor(Math.random()*3)];
+  const others = FORMS.filter(f=>f!==givenForm);
+  speed.askForm = others[Math.floor(Math.random()*2)];
+  $("givenLabel").textContent = LABEL[givenForm];
+  $("given").textContent = current[givenForm];
+  const l = $("l0"); l.textContent = LABEL[speed.askForm];
+  if(HINT[speed.askForm]){ const s=document.createElement("span"); s.className="hint"; s.textContent=HINT[speed.askForm]; l.append(s); }
+  $("i0").value = ""; $("i0").readOnly = false; $("i0").lang = speed.askForm==="de" ? "de" : "en";
+  $("f0").className = "field"; $("c0").hidden = true;
+  $("i0").focus();
+}
+function submitSpeed(skip){
+  if(!speed || !speed.timer) return;
+  const f = speed.askForm, input = $("i0").value;
+  if(!skip && !input.trim()) return;
+  const cands = VERBS.filter(v=>norm(v[givenForm])===norm(current[givenForm]));
+  const hit = skip ? null : cands.find(v=>matches(f, v, input));
+  const ok = !!hit, verb = hit || current;
+  if(ok){
+    speed.score++; combo++;
+    if(combo > T.bestCombo) T.bestCombo = combo;
+    let fixed = false;
+    if(T.mistakes[verb.inf]){ T.mistakes[verb.inf]--; if(T.mistakes[verb.inf]<=0){ delete T.mistakes[verb.inf]; fixed = true; } }
+    $("feedback").textContent = "✓ " + verb[givenForm] + " → " + verb[f];
+    $("feedback").className = "feedback ok";
+    saveT();
+    const r = {ok:true, combo, fixed};
+    K.react(K.award(TRAINER_ID, r), r);
+  }else{
+    combo = 0;
+    T.mistakes[verb.inf] = 2;
+    $("feedback").textContent = "✗ " + verb[givenForm] + " → " + verb[f];
+    $("feedback").className = "feedback bad";
+    saveT();
+    const r = {ok:false, gaveUp:skip, combo};
+    K.react(K.award(TRAINER_ID, r), r);
+  }
+  right += ok ? 1 : 0; total++;
+  $("score").textContent = right + " von " + total + " richtig";
+  renderMistakes();
+  nextSpeed();
+}
+function stopSpeed(finished){
+  clearInterval(speed.timer); speed.timer = null;
+  $("speedBar").hidden = true; $("quiz").hidden = true; $("f1").hidden = false;
+  if(finished){
+    const score = speed.score, old = T.speedBest;
+    $("speedEnd").hidden = false;
+    $("speedResult").textContent = score;
+    if(score > old){
+      T.speedBest = score; saveT();
+      $("speedResultText").textContent = old ? "Neuer Rekord! Vorher waren es " + old + ". Bonus: +" + SPEED_RECORD_COINS + " 🪙" : "Dein erster Rekord! Bonus: +" + SPEED_RECORD_COINS + " 🪙";
+      K.bonusCoins(SPEED_RECORD_COINS);
+      K.say("Rekord! Wahnsinn!", 3000);
+    }else{
+      $("speedResultText").textContent = "Richtige Antworten. Dein Rekord: " + old + (old - score <= 2 ? ". Ganz knapp!" : ".");
+    }
+    $("speedAgain").focus();
+  }
+  K.render();
+  K.hold(false);
 }
 
 let clearArmed = false;
@@ -251,12 +367,15 @@ function renderMistakes(){
   box.append(clear);
 }
 
-$("go").onclick = ()=> checked ? newRound() : check();
-$("idk").onclick = ()=> { if(!checked) check(true); };
-$("i0").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); if(checked) newRound(); else $("i1").focus(); }});
+$("go").onclick = ()=> mode==="speed" ? submitSpeed(false) : (checked ? newRound() : check());
+$("idk").onclick = ()=> { if(mode==="speed") submitSpeed(true); else if(!checked) check(true); };
+$("i0").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); if(mode==="speed") submitSpeed(false); else if(checked) newRound(); else $("i1").focus(); }});
 $("i1").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); checked ? newRound() : check(); }});
 $("modeAll").onclick=()=>{ if(mode!=="all"){ setMode("all"); newRound(); } };
 $("modeErr").onclick=()=>{ if(mode!=="err"){ setMode("err"); newRound(); } };
+$("modeSpeed").onclick=()=>{ if(mode!=="speed") setMode("speed"); };
+$("speedGo").onclick = startSpeed;
+$("speedAgain").onclick = startSpeed;
 
 renderMistakes();
 newRound();
