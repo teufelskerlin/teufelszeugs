@@ -27,3 +27,6 @@ Statische Lern-Seite für GitHub Pages. Alle Fortschritte liegen im Browser (loc
 - Neue Tierart: in `SPECIES` (kruemel.js) eintragen mit `name`, `rarity` (common, rare, epic, legendary, mythic), `def` (Standardname), `forms` (4 Namen) und `draw(stufe 1–4, laune)`.
 - Chancen und Preis fürs Neuziehen: `RARITY` und `K.REROLL_COST`.
 - Charaktere mit ihren Sprüchen: `CHARS`.
+
+## Updates zuverlässig ausliefern
+Alle Seiten binden `style.css`, `kruemel.js` und `musik.js` mit `?v=…` ein. Nach Änderungen an diesen Dateien die Versionsnummer in allen HTML-Dateien erhöhen, dann laden Browser die neue Fassung statt einer zwischengespeicherten.

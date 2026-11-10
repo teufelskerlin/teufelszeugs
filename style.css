@@ -299,8 +299,9 @@ td.n{color:var(--bad);font-weight:700;white-space:nowrap}
 .fbar span:last-child{border-right:none}
 .fbar span.on{background:var(--goal)}
 .bar-row{display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:.5rem;font-weight:700}
-.hn-list{display:flex;flex-wrap:wrap;gap:1rem 2rem}
-.hn-item{display:inline-flex;align-items:center;gap:.6rem}
+.hn-list{display:flex;flex-direction:column;align-items:flex-start;gap:.7rem;width:100%}
+.hn-item{display:inline-flex;align-items:center;gap:.9rem;background:var(--paper);border:2px solid var(--rule);border-radius:14px;padding:.45rem 1rem}
+.hn-item .eq{color:var(--muted)}
 .tiles{display:flex;flex-wrap:wrap;gap:.6rem;min-height:5.2rem;align-items:center;margin:0 0 .75rem}
 .tile{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:1.7rem;color:var(--ink);background:var(--paper);border:2px solid var(--rule);border-radius:12px;padding:.35rem .8rem;cursor:pointer;min-width:3.6rem}
 .tile:focus-visible{outline:3px solid var(--margin);outline-offset:2px}

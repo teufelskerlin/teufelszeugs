@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20261110b">
 </head>
 <body>
 <main>
@@ -58,7 +58,7 @@
   </section>
 </main>
 
-<script src="kruemel.js"></script>
+<script src="kruemel.js?v=20261110b"></script>
 <script>
 (function(){
 const TRAINER_ID = "brueche";
@@ -217,7 +217,7 @@ function newRound(){
   if(k==="kgv"){ label = "ggT und kgV"; q = "Bestimme das kleinste gemeinsame Vielfache."; expr = `<span>kgV(${task.nums[0]}; ${task.nums[1]}) =</span>${WIN("x")}`; }
   if(k==="hauptnenner"){
     label = "Gleichnamig machen"; q = "Bring die Brüche auf den Hauptnenner.";
-    expr = `<span class="hn-list">` + task.fr.map((f,i)=>`<span class="hn-item">${F(...f)}<span>=</span>${FIN("n"+i,"d"+i)}</span>`).join("") + `</span>`;
+    expr = `<span class="hn-list">` + task.fr.map((f,i)=>`<span class="hn-item">${F(...f)}<span class="eq">=</span>${FIN("n"+i,"d"+i)}</span>`).join("") + `</span>`;
   }
   if(k==="ordnen"){
     label = "Brüche ordnen"; q = "Ordne der Größe nach.";
