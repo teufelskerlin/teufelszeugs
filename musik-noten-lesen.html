@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Noten lesen – Lernwelt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎼</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="./">← Zur Übersicht</a>
+  <header>
+    <h1>Noten lesen</h1>
+    <p class="score" id="score">Noch keine Antworten</p>
+  </header>
+
+  <section id="buddy" aria-label="Dein Tier"></section>
+
+  <div class="modes" role="group" aria-label="Übungsmodus">
+    <button type="button" id="modeAll" aria-pressed="true">Alles</button>
+    <button type="button" id="modeSet" aria-pressed="false">Note setzen</button>
+    <button type="button" id="modeName" aria-pressed="false">Note benennen</button>
+    <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
+  </div>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <p class="given-label" id="taskLabel"></p>
+    <p class="given" id="given"></p>
+    <div class="staff-wrap" id="staffWrap"></div>
+
+    <div id="setTools" hidden>
+      <div class="move-btns">
+        <button type="button" class="round-btn" id="upBtn" aria-label="Note höher">▲</button>
+        <button type="button" class="round-btn" id="downBtn" aria-label="Note tiefer">▼</button>
+        <span class="hint-text">Tippe auf die richtige Stelle oder schieb die Note mit ▲ ▼.</span>
+      </div>
+    </div>
+
+    <div id="nameTools" hidden>
+      <div class="field" id="nameField">
+        <label for="nameInput">Wie heißt der Ton? <span class="hint">– mit Strichen, z. B. a, a' oder c''</span></label>
+        <input id="nameInput" class="name-field" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="none">
+      </div>
+      <div class="keypad" role="group" aria-label="Notennamen eingeben">
+        <button type="button" class="key" data-k="c">c</button><button type="button" class="key" data-k="d">d</button><button type="button" class="key" data-k="e">e</button><button type="button" class="key" data-k="f">f</button><button type="button" class="key" data-k="g">g</button>
+        <button type="button" class="key" data-k="a">a</button><button type="button" class="key" data-k="h">h</button><button type="button" class="key" data-k="'">'</button><button type="button" class="key wide" data-k="del" aria-label="Löschen">⌫</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="primary" id="go">Prüfen</button>
+      <button type="button" class="secondary" id="idk">Keine Ahnung, Brudi!</button>
+      <button type="button" class="listen" id="listen" hidden>▶ Ton anhören</button>
+      <p class="feedback" id="feedback"></p>
+    </div>
+  </section>
+
+  <section class="mistakes" aria-labelledby="mh">
+    <h2 id="mh">Fehlerliste</h2>
+    <p>Ein Ton verschwindet von der Liste, wenn du ihn zweimal richtig hattest. Dreimal hintereinander richtig heißt: gemeistert 🎓</p>
+    <div id="mistakeList"></div>
+  </section>
+</main>
+
+<script src="kruemel.js"></script>
+<script src="musik.js"></script>
+<script>
+(function(){
+const TRAINER_ID = "noten-lesen";
+const K = Kruemel, M = Musik, $ = id => document.getElementById(id);
+const META = K.TRAINERS.find(t=>t.id===TRAINER_ID);
+const NOTES = M.NOTES;
+const MAXI = NOTES.length - 1;
+const START = NOTES.indexOf("h'");   // Startposition für ▲ ▼
+const NOTE_X = 165;
+const VB_H = 175;
+
+const T = K.trainer(TRAINER_ID);
+const saveT = () => K.saveTrainer(TRAINER_ID, T);
+const mastered = () => NOTES.filter(n=>(T.mastery[n]||0) >= K.MASTERY).length;
+
+let mode = "all", deck = [], task = null, placed = null, checked = false, last = null;
+let right = 0, total = 0, combo = 0;
+
+K.trackTime(TRAINER_ID);
+K.mount($("buddy"), {
+  chips: () => [
+    {text:"🔥 Serie " + combo, cls: combo>=3 ? "hot" : ""},
+    {text:"🏆 Rekord " + T.bestCombo},
+    {text:"🎓 " + mastered() + " / " + NOTES.length}
+  ]
+});
+
+// ---- Eingabe-Normalisierung: a1 / a' / a’ → a' ; c2 / c" → c'' ----
+function normName(s){
+  s = (s||"").trim().toLowerCase().replace(/[’‘´`]/g,"'").replace(/"/g,"''").replace(/\s+/g,"");
+  s = s.replace(/^([a-h])2$/,"$1''").replace(/^([a-h])1$/,"$1'");
+  return s;
+}
+
+// ---- Aufgaben ----
+function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+function nextTask(){
+  if(mode==="err"){
+    const pool = NOTES.map((n,i)=>i).filter(i=>T.mistakes[NOTES[i]]);
+    if(!pool.length){ setMode("all"); return nextTask(); }
+    const choice = pool.length>1 ? pool.filter(p=>!last || p!==last.p) : pool;
+    return {p: choice[Math.floor(Math.random()*choice.length)], type: Math.random()<.5 ? "set" : "name"};
+  }
+  if(!deck.length){
+    const types = mode==="set" ? ["set"] : mode==="name" ? ["name"] : ["set","name"];
+    deck = shuffle(NOTES.flatMap((n,p)=>types.map(type=>({p,type}))));
+    if(last && deck[deck.length-1].p===last.p) deck.unshift(deck.pop());
+  }
+  return deck.pop();
+}
+
+function drawStaff(notes){
+  // notes: [{p, x, color}]
+  let s = `<svg viewBox="0 0 280 ${VB_H}" id="staffSvg"${task && task.type==="set" && !checked ? ` tabindex="0" role="slider" aria-label="Position der Note" aria-valuemin="0" aria-valuemax="${MAXI}" aria-valuenow="${placed===null?START:placed}"` : ` aria-hidden="true"`}>`;
+  s += `<rect x="0" y="0" width="280" height="${VB_H}" fill="transparent"/>`;
+  s += M.staff(8, 272) + M.clef(22);
+  for(const n of notes){
+    const p = M.posOf(n.p);
+    s += M.note(n.x, M.yOf(p), "q", {color:n.color, ledger: p<=0 ? M.ledgersFor(p) : null});
+  }
+  return s + `</svg>`;
+}
+
+function render(){
+  const isSet = task.type==="set";
+  $("setTools").hidden = !isSet || checked;
+  $("nameTools").hidden = isSet;
+  const notes = [];
+  if(isSet){
+    if(placed!==null) notes.push({p:placed, x: checked && placed!==task.p ? 140 : NOTE_X, color: checked ? (placed===task.p ? "var(--ok)" : "var(--bad)") : "var(--xp)"});
+    if(checked && placed!==task.p) notes.push({p:task.p, x:200, color:"var(--ok)"});
+  }else{
+    notes.push({p:task.p, x:NOTE_X});
+  }
+  $("staffWrap").innerHTML = drawStaff(notes);
+  $("staffWrap").classList.toggle("tap", isSet && !checked);
+  if(isSet && !checked) bindStaff();
+}
+
+function newRound(){
+  task = nextTask(); last = task;
+  placed = null; checked = false;
+  if(task.type==="set"){
+    $("taskLabel").textContent = "Setze diesen Ton ins Notensystem:";
+    $("given").textContent = NOTES[task.p];
+  }else{
+    $("taskLabel").textContent = "Welcher Ton ist das?";
+    $("given").textContent = "";
+    $("nameInput").value = ""; $("nameInput").readOnly = false;
+    $("nameField").className = "field";
+  }
+  $("given").hidden = task.type!=="set";
+  $("feedback").textContent = ""; $("feedback").className = "feedback";
+  $("go").textContent = "Prüfen"; $("idk").hidden = false; $("listen").hidden = true;
+  render();
+  if(task.type==="set") $("staffSvg").focus({preventScroll:true}); else $("nameInput").focus({preventScroll:true});
+}
+
+// ---- Note setzen: tippen, ziehen, Pfeiltasten ----
+function pFromEvent(e){
+  const svg = $("staffSvg");
+  const r = svg.getBoundingClientRect();
+  const y = (e.clientY - r.top) / r.height * VB_H;
+  return Math.max(0, Math.min(MAXI, Math.round((M.BOTTOM - y) / (M.GAP/2) + 2) + M.OFFSET));
+}
+const playIdx = i => K.playTone(M.FREQ[NOTES[i]], .6);
+function setPlaced(p){ const np = Math.max(0, Math.min(MAXI, p)); if(np!==placed) playIdx(np); placed = np; render(); $("staffSvg").focus({preventScroll:true}); }
+function bindStaff(){
+  const svg = $("staffSvg");
+  let dragging = false;
+  svg.addEventListener("pointerdown", e => { dragging = true; svg.setPointerCapture && svg.setPointerCapture(e.pointerId); placed = pFromEvent(e); playIdx(placed); render(); bindDragOnly(e.pointerId); });
+  svg.addEventListener("keydown", e => {
+    if(e.key==="ArrowUp"){ e.preventDefault(); setPlaced(placed===null ? START : placed+1); }
+    if(e.key==="ArrowDown"){ e.preventDefault(); setPlaced(placed===null ? START : placed-1); }
+    if(e.key==="Enter"){ e.preventDefault(); check(false); }
+  });
+}
+function bindDragOnly(){
+  const move = e => { const p = pFromEvent(e); if(p!==placed){ placed = p; playIdx(p); render(); } };
+  const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); const s=$("staffSvg"); if(s) s.focus({preventScroll:true}); };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+}
+$("upBtn").onclick = () => setPlaced(placed===null ? START : placed+1);
+$("downBtn").onclick = () => setPlaced(placed===null ? START : placed-1);
+
+// ---- Tastenfeld ----
+document.querySelectorAll(".key").forEach(b => b.onclick = () => {
+  if(checked) return;
+  const inp = $("nameInput"), k = b.dataset.k;
+  if(k==="del") inp.value = inp.value.slice(0,-1);
+  else if(k==="'") inp.value += "'";
+  else inp.value = k;
+  inp.focus({preventScroll:true});
+});
+$("nameInput").addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); checked ? newRound() : check(false); } });
+
+// ---- Prüfen ----
+function check(giveUp){
+  if(checked) return;
+  const target = NOTES[task.p];
+  let ok = false, hint = "";
+  if(task.type==="set"){
+    if(placed===null && !giveUp){ $("feedback").textContent = "Setz zuerst die Note."; $("feedback").className = "feedback"; return; }
+    ok = !giveUp && placed===task.p;
+    if(giveUp && placed===null) placed = task.p, ok = false;
+    if(!ok && placed!==null && placed!==task.p) hint = "Du hast " + NOTES[placed] + " gesetzt. Grün ist " + target + ".";
+  }else{
+    const v = normName($("nameInput").value);
+    if(!v && !giveUp){ $("feedback").textContent = "Gib zuerst einen Ton ein."; $("feedback").className = "feedback"; return; }
+    ok = !giveUp && v===target;
+    if(!ok){
+      if(v && v[0]==="b" && target[0]==="h") hint = "Im Deutschen heißt dieser Ton h. Richtig ist " + target + ".";
+      else if(v && v[0]===target[0]) hint = "Fast! Achte auf die Striche: " + target;
+      else hint = "Richtig ist " + target + ".";
+    }
+    $("nameField").className = "field " + (ok ? "ok" : "bad");
+    $("nameInput").readOnly = true;
+  }
+  checked = true; total++;
+  let fixed = false;
+  if(ok){
+    right++; combo++;
+    if(combo > T.bestCombo) T.bestCombo = combo;
+    T.mastery[target] = (T.mastery[target]||0) + 1;
+    if(T.mistakes[target]){ T.mistakes[target]--; if(T.mistakes[target]<=0){ delete T.mistakes[target]; fixed = true; } }
+    $("feedback").textContent = T.mastery[target]===K.MASTERY ? "Richtig! " + target + " gemeistert 🎓" : "Richtig, das ist " + target + "!";
+    $("feedback").className = "feedback ok";
+  }else{
+    combo = 0;
+    T.mistakes[target] = 2; T.mastery[target] = 0;
+    $("feedback").textContent = giveUp ? "Kein Ding: Das ist " + target + ". Kommt auf die Fehlerliste" : hint + " Kommt auf die Fehlerliste";
+    $("feedback").className = "feedback bad";
+    const sh=$("sheet"); sh.classList.remove("shake"); void sh.offsetWidth; sh.classList.add("shake");
+  }
+  saveT();
+  render();
+  setTimeout(()=>playIdx(task.p), 450);
+  $("score").textContent = right + " von " + total + " richtig";
+  $("go").textContent = "Weiter"; $("idk").hidden = true; $("listen").hidden = false;
+  renderMistakes();
+  const before = mastered();
+  const r = {ok, gaveUp:giveUp, combo, fixed};
+  K.react(K.award(TRAINER_ID, r), r);
+  if(mastered() === NOTES.length && META && META.reward) K.grantReward(META.reward);
+  if($("kCel").hidden) $("go").focus();
+}
+
+function setMode(m){
+  mode = m; deck = [];
+  ["All","Set","Name","Err"].forEach(x => $("mode"+x).setAttribute("aria-pressed", m===x.toLowerCase()));
+}
+
+let clearArmed = false;
+function renderMistakes(){
+  const list = NOTES.filter(n=>T.mistakes[n]);
+  $("modeErr").textContent = "Meine Fehler (" + list.length + ")";
+  $("modeErr").disabled = !list.length;
+  const box = $("mistakeList"); box.textContent = ""; clearArmed = false;
+  if(!list.length){ const p=document.createElement("p"); p.className="empty"; p.textContent="Noch keine Fehler. Falsche Antworten landen automatisch hier."; box.append(p); return; }
+  const wrap=document.createElement("div"); wrap.className="list-wrap";
+  const t=document.createElement("table");
+  t.innerHTML="<thead><tr><th>Ton</th><th>Liegt</th><th>Noch richtig</th></tr></thead>";
+  const tb=document.createElement("tbody");
+  for(const n of list){
+    const p = M.posOf(NOTES.indexOf(n));
+    const where = {"-3":"unter der 2. Hilfslinie", "-2":"auf der 2. Hilfslinie unten", "-1":"zwischen 1. und 2. Hilfslinie", "0":"auf der 1. Hilfslinie unten", "1":"unter der untersten Linie", "11":"über der obersten Linie"}[p]
+      || (M.onLine(p) ? "auf der " + ((p-2)/2+1) + ". Linie" : "im " + ((p-3)/2+1) + ". Zwischenraum");
+    const tr=document.createElement("tr");
+    [n, where, T.mistakes[n]+"×"].forEach((x,i)=>{const td=document.createElement("td"); td.textContent=x; if(i===2) td.className="n"; tr.append(td);});
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); box.append(wrap);
+  const clear=document.createElement("button"); clear.className="link"; clear.type="button"; clear.textContent="Fehlerliste leeren";
+  clear.onclick=()=>{ if(!clearArmed){ clearArmed=true; clear.textContent="Wirklich alle löschen? Nochmal tippen"; return; } T.mistakes={}; saveT(); renderMistakes(); if(mode==="err"){ setMode("all"); newRound(); } };
+  box.append(clear);
+}
+
+$("go").onclick = () => checked ? newRound() : check(false);
+$("listen").onclick = () => playIdx(task.p);
+$("idk").onclick = () => check(true);
+$("modeAll").onclick = () => { if(mode!=="all"){ setMode("all"); newRound(); } };
+$("modeSet").onclick = () => { if(mode!=="set"){ setMode("set"); newRound(); } };
+$("modeName").onclick = () => { if(mode!=="name"){ setMode("name"); newRound(); } };
+$("modeErr").onclick = () => { if(mode!=="err"){ setMode("err"); newRound(); } };
+document.addEventListener("keydown", e => { if(e.key==="Enter" && checked && $("kCel").hidden && document.activeElement && document.activeElement.id!=="go"){ e.preventDefault(); newRound(); } });
+
+renderMistakes();
+newRound();
+})();
+</script>
+</body>
+</html>

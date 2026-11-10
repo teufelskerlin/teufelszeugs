@@ -267,6 +267,7 @@ function tickSpeed(){
   $("speedTime").textContent = Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0");
   $("speedFill").style.width = (left / (SPEED_SECONDS*1000) * 100) + "%";
   $("speedBar").classList.toggle("low", sec <= 10);
+  if(sec <= 5 && sec > 0 && sec !== speed.lastTick){ speed.lastTick = sec; K.sfx("tick"); }
   $("speedScore").textContent = speed.score + " ✓";
   if(left <= 0) stopSpeed(true);
 }
@@ -318,13 +319,14 @@ function stopSpeed(finished){
   clearInterval(speed.timer); speed.timer = null;
   $("speedBar").hidden = true; $("quiz").hidden = true; $("f1").hidden = false;
   if(finished){
+    K.sfx("end");
     const score = speed.score, old = T.speedBest;
     $("speedEnd").hidden = false;
     $("speedResult").textContent = score;
     if(score > old){
       T.speedBest = score; saveT();
       $("speedResultText").textContent = old ? "Neuer Rekord! Vorher waren es " + old + ". Bonus: +" + SPEED_RECORD_COINS + " 🪙" : "Dein erster Rekord! Bonus: +" + SPEED_RECORD_COINS + " 🪙";
-      K.bonusCoins(SPEED_RECORD_COINS);
+      setTimeout(()=>{ K.bonusCoins(SPEED_RECORD_COINS); K.sfx("fanfare"); }, 600);
       K.say("Rekord! Wahnsinn!", 3000);
     }else{
       const diff = old - score;

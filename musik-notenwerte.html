@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notenwerte – Lernwelt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="./">← Zur Übersicht</a>
+  <header>
+    <h1>Notenwerte</h1>
+    <p class="score" id="score">Noch keine Antworten</p>
+  </header>
+
+  <section id="buddy" aria-label="Dein Tier"></section>
+
+  <div class="modes" role="group" aria-label="Übungsmodus">
+    <button type="button" id="modeAll" aria-pressed="true">Alles</button>
+    <button type="button" id="modeValue" aria-pressed="false">Notenwerte</button>
+    <button type="button" id="modeFill" aria-pressed="false">Takt ergänzen</button>
+    <button type="button" id="modeCount" aria-pressed="false">Zählzeiten</button>
+    <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
+  </div>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <p class="given-label" id="taskLabel"></p>
+    <p class="speed-title" id="question"></p>
+    <div class="single-note" id="singleNote" hidden></div>
+    <div class="staff-wrap" id="measure"></div>
+    <div class="count-row" id="countRow" hidden></div>
+    <div class="count-row" id="countRow2" hidden></div>
+    <div class="palette" id="palette" hidden></div>
+    <div class="opts" id="opts" hidden></div>
+    <div class="actions">
+      <button type="button" class="primary" id="go">Prüfen</button>
+      <button type="button" class="secondary" id="idk">Keine Ahnung, Brudi!</button>
+      <button type="button" class="listen" id="listen" hidden>▶ Anhören</button>
+      <p class="feedback" id="feedback"></p>
+    </div>
+  </section>
+
+  <section class="mistakes" aria-labelledby="mh">
+    <h2 id="mh">Spickzettel</h2>
+    <div class="list-wrap"><table>
+      <thead><tr><th>Note</th><th>Name</th><th>Schläge im 4/4-Takt</th></tr></thead>
+      <tbody id="cheat"></tbody>
+    </table></div>
+    <h2 style="margin-top:1.5rem">Fehlerliste</h2>
+    <p>Was hier steht, kommt im Fehler-Modus dran. Zweimal richtig, und es verschwindet. Dreimal hintereinander richtig heißt: gemeistert 🎓</p>
+    <div id="mistakeList"></div>
+  </section>
+</main>
+
+<script src="kruemel.js"></script>
+<script src="musik.js"></script>
+<script>
+(function(){
+const TRAINER_ID = "notenwerte";
+const K = Kruemel, M = Musik, $ = id => document.getElementById(id);
+const META = K.TRAINERS.find(t=>t.id===TRAINER_ID);
+
+const V = {
+  w:  {beats:4,   name:"Ganze Note",          short:"Ganze",     kind:"w"},
+  hd: {beats:3,   name:"Punktierte Halbe",    short:"Punkt. Halbe", kind:"h", dot:true},
+  h:  {beats:2,   name:"Halbe Note",          short:"Halbe",     kind:"h"},
+  q:  {beats:1,   name:"Viertelnote",         short:"Viertel",   kind:"q"},
+  e:  {beats:0.5, name:"Achtelnote",          short:"Achtel",    kind:"e"},
+  s:  {beats:0.25,name:"Sechzehntelnote",     short:"16tel",     kind:"s"}
+};
+const VALUE_KEYS = ["w","h","q","e","s"];   // punktierte Halbe (hd) bewusst noch nicht dabei
+const BEAT_KEYS = ["w","h","q"];             // nur bei diesen wird nach der Zahl der Schläge gefragt
+const BEATS = 4;                             // vorerst nur 4/4-Takt
+const SKILLS = {takt:"Takt ergänzen", zaehlen:"Zählzeiten"};
+const ALL_KEYS = VALUE_KEYS.concat(Object.keys(SKILLS));
+const labelOf = k => V[k] ? V[k].name : SKILLS[k];
+const fmtBeats = b => b===0.5 ? "½" : b===0.25 ? "¼" : String(b).replace(".5","½");
+
+const T = K.trainer(TRAINER_ID);
+const saveT = () => K.saveTrainer(TRAINER_ID, T);
+const mastered = () => ALL_KEYS.filter(k=>(T.mastery[k]||0) >= K.MASTERY).length;
+
+let mode = "all", task = null, checked = false, lastType = null;
+let right = 0, total = 0, combo = 0;
+
+K.trackTime(TRAINER_ID);
+K.mount($("buddy"), {
+  chips: () => [
+    {text:"🔥 Serie " + combo, cls: combo>=3 ? "hot" : ""},
+    {text:"🏆 Rekord " + T.bestCombo},
+    {text:"🎓 " + mastered() + " / " + ALL_KEYS.length}
+  ]
+});
+
+// Spickzettel
+$("cheat").innerHTML = VALUE_KEYS.map(k => `<tr><td><svg viewBox="0 0 50 70" width="34" height="48" style="color:var(--ink);overflow:visible">${noteAt(18, 58, k)}</svg></td><td>${V[k].name}</td><td>${fmtBeats(V[k].beats)}</td></tr>`).join("");
+
+function noteAt(x, y, k, color){ return M.note(x, y, V[k].kind, {dot:V[k].dot, stemUp:true, color}); }
+
+// ---- Takte erzeugen ----
+function pickWeighted(list){ let s = list.reduce((a,b)=>a+b[1],0), r = Math.random()*s; for(const [v,w] of list){ if(r < w) return v; r -= w; } return list[0][0]; }
+// Gruppen, die genau einen Schlag füllen (Achtel und Sechzehntel)
+const GROUPS = {ee:["e","e"], ssss:["s","s","s","s"], ess:["e","s","s"], sse:["s","s","e"]};
+function genMeasure(beats, sub=true){
+  const seq = []; let r = beats, sixteenths = false;
+  while(r > 0){
+    const opts = [];
+    if(r===4 && beats===4) opts.push(["w",1]);
+    if(r>=2) opts.push(["h",3]);
+    opts.push(["q",4]);
+    if(sub){
+      opts.push(["ee",2.2]);
+      if(!sixteenths) opts.push(["ssss",.9],["ess",.6],["sse",.6]);   // höchstens eine Sechzehntel-Gruppe pro Takt
+    }
+    const v = pickWeighted(opts);
+    if(GROUPS[v]){ seq.push(...GROUPS[v]); r -= 1; if(v!=="ee") sixteenths = true; }
+    else { seq.push(v); r -= V[v].beats; }
+  }
+  return seq;
+}
+const sum = seq => seq.reduce((a,k)=>a+V[k].beats,0);
+
+// ---- Zeichnen eines Takts ----
+const VB_W = 380, AREA_X = 92, AREA_W = 262;
+// Platz je Note: kurze Noten etwas breiter als ihr Zeitwert, damit nichts überlappt
+const WEIGHT = {w:2.6, h:1.7, q:1, e:.75, s:.6};
+function measureSVG(beats, notes, opt={}){
+  // notes: [{k, color}]
+  const starts = []; let t = 0;
+  notes.forEach(n=>{ starts.push(t); t += V[n.k].beats; });
+  const ws = notes.map(n=>WEIGHT[n.k]);
+  const GAP_BEAT = .3;   // kleine Lücke vor jedem neuen Schlag, damit die Gruppen gut zu sehen sind
+  const gaps = notes.map((n,i)=> i>0 && starts[i]%1===0 ? GAP_BEAT : 0);
+  const wTot = Math.max(ws.reduce((a,b)=>a+b,0) + gaps.reduce((a,b)=>a+b,0), 4.9);
+  const xs = []; let acc = 0;
+  notes.forEach((n,i)=>{ acc += gaps[i]; xs.push(AREA_X + 12 + (acc/wTot)*AREA_W); acc += ws[i]; });
+  let s = `<svg viewBox="0 0 ${VB_W} 150" aria-hidden="true">` + M.staff(8, VB_W-8) + M.clef(22) + M.timeSig(66, beats, 4);
+  // Balkengruppen: Achtel/Sechzehntel, die zusammen genau einen Schlag ab einem Schlag füllen
+  const groups = []; const inGroup = new Set();
+  for(let i=0;i<notes.length;i++){
+    if(starts[i]%1!==0 || V[notes[i].k].beats>=1) continue;
+    let j = i, d = 0;
+    while(j<notes.length && V[notes[j].k].beats<1 && d<1){ d += V[notes[j].k].beats; j++; }
+    if(Math.abs(d-1)<1e-9 && j-i>=2){ groups.push([i,j-1]); for(let k=i;k<j;k++) inGroup.add(k); i = j-1; }
+  }
+  const y = M.lineY(2), stemTop = y - 44;
+  notes.forEach((n,i)=>{
+    s += inGroup.has(i) ? M.note(xs[i], y, "q", {stemUp:true, color:n.color}) : noteAt(xs[i], y, n.k, n.color);
+  });
+  const bar = (x1, x2, yy, c) => `<path d="M${x1-1.1} ${yy} L${x2+1.1} ${yy} L${x2+1.1} ${yy+5.5} L${x1-1.1} ${yy+5.5} Z" fill="${c}"/>`;
+  for(const [a,b] of groups){
+    const c = notes[a].color || "currentColor";
+    s += bar(xs[a]+7.4, xs[b]+7.4, stemTop, c);
+    // zweiter Balken über benachbarten Sechzehnteln
+    for(let i=a;i<=b;i++){
+      if(notes[i].k!=="s") continue;
+      let j = i; while(j+1<=b && notes[j+1].k==="s") j++;
+      if(j>i) s += bar(xs[i]+7.4, xs[j]+7.4, stemTop+9, c);
+      else s += i===b ? bar(xs[i]+7.4-9, xs[i]+7.4, stemTop+9, c) : bar(xs[i]+7.4, xs[i]+7.4+9, stemTop+9, c);   // Fähnchen-Balken
+      i = j;
+    }
+  }
+  // Taktstrich: am Ende, oder bei zu vielen Noten dort, wo der Takt voll ist
+  let barX = VB_W - 8, over = -1;
+  for(let i=0;i<notes.length;i++) if(starts[i] >= beats - 1e-9){ over = i; break; }
+  if(over > 0) barX = (xs[over-1] + xs[over]) / 2 + 6;
+  s += `<line x1="${barX}" x2="${barX}" y1="${M.lineY(0)}" y2="${M.lineY(4)}" stroke="currentColor" stroke-width="2.4"/>`;
+  if(opt.empty && !notes.length) s += `<text x="${AREA_X+AREA_W/2}" y="${M.lineY(2)+5}" text-anchor="middle" font-size="13" fill="currentColor" opacity=".5">leer</text>`;
+  return {svg: s + `</svg>`, xs};
+}
+
+// ---- Aufgaben ----
+function pickType(){
+  if(mode==="value") return "value";
+  if(mode==="fill") return "fill";
+  if(mode==="count") return "count";
+  if(mode==="err"){
+    const keys = ALL_KEYS.filter(k=>T.mistakes[k]);
+    if(!keys.length){ setMode("all"); return pickType(); }
+    const k = keys[Math.floor(Math.random()*keys.length)];
+    return k==="takt" ? "fill" : k==="zaehlen" ? "count" : {type:"value", key:k};
+  }
+  const types = ["value","fill","count"].filter(t=>t!==lastType);
+  return types[Math.floor(Math.random()*types.length)];
+}
+
+function newRound(){
+  let pt = pickType(), forced = null;
+  if(typeof pt === "object"){ forced = pt.key; pt = pt.type; }
+  lastType = pt; checked = false;
+  ["singleNote","countRow","countRow2","palette","opts"].forEach(id=>$(id).hidden = true);
+  $("countRow").style.height = "";
+  $("measure").hidden = false;
+  $("feedback").textContent = ""; $("feedback").className = "feedback";
+  $("go").textContent = "Prüfen"; $("go").hidden = false; $("idk").hidden = false;
+  $("listen").hidden = pt==="value";
+  $("question").textContent = "";
+
+  if(pt==="value"){
+    const k = forced || VALUE_KEYS[Math.floor(Math.random()*VALUE_KEYS.length)];
+    const ask = BEAT_KEYS.includes(k) && Math.random() < .5 ? "beats" : "name";
+    task = {type:"value", key:k, ask};
+    $("taskLabel").textContent = "Notenwerte";
+    $("question").textContent = ask==="name" ? "Wie heißt diese Note?" : "Wie viele Schläge dauert sie im 4/4-Takt?";
+    $("measure").hidden = true;
+    $("singleNote").hidden = false;
+    $("singleNote").innerHTML = `<svg viewBox="0 0 60 80">${noteAt(22, 66, k)}</svg>`;
+    const options = ask==="name" ? VALUE_KEYS.map(x=>({v:x, t:V[x].name})) : [1,2,3,4].map(b=>({v:b, t:fmtBeats(b)}));
+    $("opts").hidden = false;
+    $("opts").innerHTML = options.map(o=>`<button type="button" class="opt" data-v="${o.v}">${o.t}</button>`).join("");
+    $("opts").querySelectorAll(".opt").forEach(b => b.onclick = () => check(false, b));
+    $("go").hidden = true;
+    $("opts").querySelector(".opt").focus({preventScroll:true});
+  }
+  else if(pt==="fill"){
+    const beats = BEATS;
+    let full; do{ full = genMeasure(beats, false); }while(full.length < 2);
+    const k = 1 + Math.floor(Math.random()*(full.length-1));
+    task = {type:"fill", beats, given: full.slice(0,k), solution: full.slice(k), added: []};
+    $("taskLabel").textContent = "Takt ergänzen";
+    $("question").textContent = "Mach den " + beats + "/4-Takt voll!";
+    $("palette").hidden = false;
+    const pal = ["w","h","q"].filter(x => beats===4 || x!=="w");   // nur ganze Schläge
+    $("palette").innerHTML = pal.map(x=>`<button type="button" class="pal" data-k="${x}" aria-label="${V[x].name} hinzufügen"><svg viewBox="0 0 40 70">${noteAt(14, 58, x)}</svg><span>${V[x].short}</span></button>`).join("") + `<button type="button" class="pal undo" id="undoBtn">↩︎ Zurück</button>`;
+    $("palette").querySelectorAll(".pal[data-k]").forEach(b => b.onclick = () => { if(checked) return; task.added.push(b.dataset.k); renderFill(); });
+    $("undoBtn").onclick = () => { if(checked) return; task.added.pop(); renderFill(); };
+    renderFill();
+    $("palette").querySelector(".pal").focus({preventScroll:true});
+  }
+  else{
+    const beats = BEATS;
+    let m; do{ m = genMeasure(beats); }while(m.length < 3);
+    const starts = []; let t = 0; for(const k of m){ starts.push(t); t += V[k].beats; }
+    task = {type:"count", beats, notes:m, starts};
+    $("taskLabel").textContent = "Zählzeiten";
+    $("question").textContent = "Schreib die Zählzeiten 1 bis 4 unter die Noten!";
+    const {svg, xs} = measureSVG(beats, m.map(k=>({k})));
+    $("measure").innerHTML = svg;
+    task.xs = xs;
+    // Nur unter Noten, die auf einem Schlag beginnen, kommt ein Kästchen
+    task.slots = starts.map((s,i)=>i).filter(i=>starts[i]%1===0);
+    $("countRow").hidden = false;
+    $("countRow").innerHTML = "";
+    task.slots.forEach((i, n)=>{
+      const s = starts[i];
+      const inp = document.createElement("input");
+      inp.id = "cnt"+i; inp.autocomplete = "off"; inp.setAttribute("inputmode","text"); inp.maxLength = 4;
+      inp.setAttribute("aria-label", "Zählzeit der " + (i+1) + ". Note");
+      inp.style.left = (xs[i]/VB_W*100) + "%";
+      inp.setAttribute("aria-label", "Zählzeit " + (n+1) + ". Kästchen");
+      inp.addEventListener("keydown", e => { if(e.key==="Enter"){ e.preventDefault(); const nx = task.slots[n+1]!==undefined && $("cnt"+task.slots[n+1]); if(nx && !checked) nx.focus(); else checked ? newRound() : check(false); } });
+      $("countRow").append(inp);
+    });
+    $("cnt0").focus({preventScroll:true});
+  }
+}
+
+function renderFill(){
+  const notes = task.given.map(k=>({k})).concat(task.added.map(k=>({k, color: checked ? undefined : "var(--xp)"})));
+  if(checked && task.showSolution) task.solution.forEach(k=>notes.push({k, color:"var(--ok)"}));
+  const {svg} = measureSVG(task.beats, notes);
+  $("measure").innerHTML = svg;
+}
+
+// Takt abspielen: Zählzeiten-Klick und Noten auf h'
+const BEAT = 0.7;
+function playMeasure(keys){
+  if(!K.soundOn() || !keys.length) return;
+  const beats = task.beats || 4;
+  for(let b=0;b<beats;b++) setTimeout(()=>K.sfx("tick"), b*BEAT*1000);       // Einzähler
+  let t = beats*BEAT;
+  for(const k of keys){ K.playTone(M.FREQ["h'"], Math.max(.18, V[k].beats*BEAT*.92), t); t += V[k].beats*BEAT; }
+}
+function currentKeys(){
+  if(task.type==="fill") return task.given.concat(task.added, task.showSolution ? task.solution : []);
+  if(task.type==="count") return task.notes;
+  return [];
+}
+
+const countLabel = s => s%1 ? "+" : String(s+1);
+const normCount = v => { v = (v||"").trim().toLowerCase(); return ["+","und","u","&"].includes(v) ? "+" : v.replace(/\.$/,""); };
+
+// ---- Prüfen ----
+function check(giveUp, btn){
+  if(checked) return;
+  let ok = false, key, msg = "";
+  if(task.type==="value"){
+    key = task.key;
+    const correct = task.ask==="name" ? key : String(V[key].beats);
+    const chosen = btn ? btn.dataset.v : null;
+    ok = !giveUp && chosen === correct;
+    $("opts").querySelectorAll(".opt").forEach(b => { b.disabled = true; if(b.dataset.v===correct) b.classList.add("ok"); else if(b===btn) b.classList.add("bad"); });
+    msg = ok ? "Richtig! " + V[key].name + ": " + fmtBeats(V[key].beats) + (V[key].beats<=1 ? " Schlag." : " Schläge.") : V[key].name + " dauert " + fmtBeats(V[key].beats) + (V[key].beats<=1 ? " Schlag." : " Schläge.");
+    $("go").hidden = false;
+  }
+  else if(task.type==="fill"){
+    key = "takt";
+    const have = sum(task.given) + sum(task.added);
+    if(!giveUp && !task.added.length){ $("feedback").textContent = "Füg zuerst Noten hinzu."; $("feedback").className = "feedback"; return; }
+    ok = !giveUp && have === task.beats;
+    if(!ok){
+      if(giveUp){ task.added = []; task.showSolution = true; msg = "So geht's zum Beispiel. Grün ist eine mögliche Lösung."; }
+      else if(have > task.beats) msg = "Zu viel! Jetzt sind es " + fmtBeats(have) + " Schläge, in den Takt passen nur " + task.beats + ".";
+      else msg = "Da fehlt noch was: Es sind erst " + fmtBeats(have) + " von " + task.beats + " Schlägen.";
+    }else msg = "Richtig! Genau " + task.beats + " Schläge.";
+    checked = true; renderFill();
+    if(ok || giveUp) setTimeout(()=>playMeasure(currentKeys()), 900);
+  }
+  else{
+    key = "zaehlen";
+    const vals = task.slots.map(i=>normCount($("cnt"+i).value));
+    if(!giveUp && vals.some(v=>!v)){ $("feedback").textContent = "Füll zuerst alle Kästchen aus."; $("feedback").className = "feedback"; return; }
+    ok = !giveUp;
+    task.slots.forEach((i, n)=>{
+      const inp = $("cnt"+i), exp = countLabel(task.starts[i]);
+      const good = !giveUp && vals[n]===exp;
+      if(!good) ok = false;
+      inp.readOnly = true; inp.classList.add(good ? "ok" : "bad");
+      if(!good){ const sol = document.createElement("span"); sol.className = "count-sol"; sol.style.left = inp.style.left; sol.textContent = exp; inp.parentNode.append(sol); }
+      if(giveUp) inp.value = "";
+    });
+    $("countRow").style.height = "4rem";
+    msg = ok ? "Richtig gezählt!" : "Rot sind die Stellen zum Üben, darunter steht die richtige Zählzeit.";
+  }
+  checked = true; total++;
+  let fixed = false;
+  if(ok){
+    right++; combo++;
+    if(combo > T.bestCombo) T.bestCombo = combo;
+    T.mastery[key] = (T.mastery[key]||0) + 1;
+    if(T.mistakes[key]){ T.mistakes[key]--; if(T.mistakes[key]<=0){ delete T.mistakes[key]; fixed = true; } }
+    if(T.mastery[key]===K.MASTERY) msg += " " + labelOf(key) + " gemeistert 🎓";
+    $("feedback").className = "feedback ok";
+  }else{
+    combo = 0;
+    T.mistakes[key] = 2; T.mastery[key] = 0;
+    msg += " Kommt auf die Fehlerliste";
+    $("feedback").className = "feedback bad";
+    const sh=$("sheet"); sh.classList.remove("shake"); void sh.offsetWidth; sh.classList.add("shake");
+  }
+  $("feedback").textContent = msg;
+  saveT();
+  $("score").textContent = right + " von " + total + " richtig";
+  $("go").textContent = "Weiter"; $("idk").hidden = true;
+  renderMistakes();
+  const r = {ok, gaveUp:giveUp, combo, fixed};
+  K.react(K.award(TRAINER_ID, r), r);
+  if(mastered() === ALL_KEYS.length && META && META.reward) K.grantReward(META.reward);
+  if($("kCel").hidden) $("go").focus();
+}
+
+function setMode(m){
+  mode = m;
+  ["All","Value","Fill","Count","Err"].forEach(x => $("mode"+x).setAttribute("aria-pressed", m===x.toLowerCase()));
+}
+
+let clearArmed = false;
+function renderMistakes(){
+  const list = ALL_KEYS.filter(k=>T.mistakes[k]);
+  $("modeErr").textContent = "Meine Fehler (" + list.length + ")";
+  $("modeErr").disabled = !list.length;
+  const box = $("mistakeList"); box.textContent = ""; clearArmed = false;
+  if(!list.length){ const p=document.createElement("p"); p.className="empty"; p.textContent="Noch keine Fehler. Falsche Antworten landen automatisch hier."; box.append(p); return; }
+  const wrap=document.createElement("div"); wrap.className="list-wrap";
+  const t=document.createElement("table");
+  t.innerHTML="<thead><tr><th>Thema</th><th>Noch richtig</th></tr></thead>";
+  const tb=document.createElement("tbody");
+  for(const k of list){
+    const tr=document.createElement("tr");
+    [labelOf(k), T.mistakes[k]+"×"].forEach((x,i)=>{const td=document.createElement("td"); td.textContent=x; if(i===1) td.className="n"; tr.append(td);});
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); box.append(wrap);
+  const clear=document.createElement("button"); clear.className="link"; clear.type="button"; clear.textContent="Fehlerliste leeren";
+  clear.onclick=()=>{ if(!clearArmed){ clearArmed=true; clear.textContent="Wirklich alle löschen? Nochmal tippen"; return; } T.mistakes={}; saveT(); renderMistakes(); if(mode==="err"){ setMode("all"); newRound(); } };
+  box.append(clear);
+}
+
+$("go").onclick = () => checked ? newRound() : check(false);
+$("listen").onclick = () => playMeasure(currentKeys());
+$("idk").onclick = () => check(true);
+[["All","all"],["Value","value"],["Fill","fill"],["Count","count"],["Err","err"]].forEach(([x,m]) => $("mode"+x).onclick = () => { if(mode!==m){ setMode(m); newRound(); } });
+
+renderMistakes();
+newRound();
+})();
+</script>
+</body>
+</html>

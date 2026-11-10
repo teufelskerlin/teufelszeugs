@@ -6,6 +6,7 @@ Statische Lern-Seite für GitHub Pages. Alle Fortschritte liegen im Browser (loc
 - `index.html` – Übersicht mit Krümel, Kleiderschrank, Trainer-Karten und Backup
 - `kruemel.js` – Profil, Belohnungen, Accessoires, Krümel-Grafik, Backup
 - `style.css` – gemeinsames Design
+- `musik.js` – Notensystem, Violinschlüssel und Noten für die Musik-Trainer
 - `<fach>-<trainer>.html` – einzelne Trainer, alle direkt im Hauptverzeichnis (keine Ordner nötig)
 
 ## Neuen Trainer ergänzen

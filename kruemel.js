@@ -10,7 +10,13 @@ const K = window.Kruemel = {};
 K.TRAINERS = [
   { id:"irregular-verbs", subject:"Englisch", title:"Irregular verbs",
     desc:"Infinitive, simple past und Deutsch", path:"englisch-irregular-verbs.html",
-    total:89, reward:"ukcap" }
+    total:89, reward:"ukcap" },
+  { id:"noten-lesen", subject:"Musik", title:"Noten lesen",
+    desc:"Töne von g bis g'' setzen und benennen", path:"musik-noten-lesen.html",
+    total:15, reward:"baton" },
+  { id:"notenwerte", subject:"Musik", title:"Notenwerte",
+    desc:"Notenwerte, Takte ergänzen, Zählzeiten", path:"musik-notenwerte.html",
+    total:7, reward:"notepin" }
 ];
 // Fächer, die ein Tier als Lieblingsfach haben kann (auch künftige)
 const SUBJECTS = [...new Set(K.TRAINERS.map(t=>t.subject).concat(["Mathe","Musik"]))];
@@ -71,11 +77,10 @@ const ITEMS = [
   {id:"wand", slot:"extra", name:"Zauberstab", price:60, minStage:4, svg:`<path d="M38 -24 L60 -60" stroke="#2D3436" stroke-width="4" stroke-linecap="round"/><path d="M62 -78 l3.5 7 l7.5 1.5 l-5.5 5 l1.5 7.5 l-7 -3.5 l-7 3.5 l1.5 -7.5 l-5.5 -5 l7.5 -1.5z" fill="#FDCB6E" ${SW} stroke-width="2"/>`}
 ];
 
-ITEMS.push(
-  {id:"ukcap", slot:"head", name:"London-Cap", reward:"irregular-verbs", svg:`<path d="M-28 -84 C-28 -114 28 -114 28 -84 Z" fill="#1F3A93" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#fff" stroke-width="7"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#D63031" stroke-width="3"/><path d="M20 -86 q22 -4 26 2 q-4 6 -26 4 z" fill="#D63031" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>`}
-);
 
 ITEMS.push(
+  {id:"baton", slot:"extra", name:"Dirigentenstab", reward:"noten-lesen", svg:`<path d="M38 -26 L68 -62" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M38 -26 L68 -62" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><ellipse cx="40" cy="-28" rx="4.5" ry="7" transform="rotate(40 40 -28)" fill="#8B5A2B" stroke="currentColor" stroke-width="2"/><ellipse cx="62" cy="-84" rx="5" ry="3.6" transform="rotate(-20 62 -84)" fill="currentColor"/><path d="M66.5 -85 V-102 C68 -96 74 -95 73 -88" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`},
+  {id:"notepin", slot:"neck", name:"Noten-Anstecker", reward:"notenwerte", svg:`<circle cx="16" cy="-18" r="10" fill="#FDCB6E" stroke="currentColor" stroke-width="2.5"/><ellipse cx="13" cy="-14" rx="3.6" ry="2.6" transform="rotate(-20 13 -14)" fill="currentColor"/><path d="M16.2 -14.5 V-25 C17 -21 21 -21 20.5 -17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`},
   {id:"ukcap", slot:"head", name:"London-Cap", reward:"irregular-verbs", svg:`<path d="M-28 -84 C-28 -114 28 -114 28 -84 Z" fill="#1F3A93" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#fff" stroke-width="7"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#D63031" stroke-width="3"/><path d="M20 -86 q22 -4 26 2 q-4 6 -26 4 z" fill="#D63031" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>`}
 );
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
@@ -329,7 +334,7 @@ function freshProfile(){
   return {version:SCHEMA, coins:20, mood:70, owned:[],
     pets:[], activePet:null, nextPetId:1,
     lastPlayed:null, day:null, dayCorrect:0, goalDay:null, dayStreak:0, bestDayStreak:0,
-    trainerDay:{day:null, counts:{}}, intro:null, zooIntro:false,
+    trainerDay:{day:null, counts:{}}, intro:null, zooIntro:false, sound:true,
     time:{total:0, day:null, today:0, trainers:{}}};
 }
 function freshTrainer(){ return {mistakes:{}, mastery:{}, bestCombo:0}; }
@@ -515,12 +520,72 @@ K.grantReward = function(itemId){
   if(!it || P.owned.includes(itemId)) return false;
   P.owned.push(itemId);
   K.save();
-  celebrate("Spezial-Teil freigeschaltet!", "Du hast alles gemeistert und bekommst: " + it.name + ". Du findest es im Kleiderschrank.", {pet: (K.kruemel()||K.active()).id});
+  celebrate("Spezial-Teil freigeschaltet!", "Du hast alles gemeistert und bekommst: " + it.name + ". Du findest es im Kleiderschrank.", {pet: (K.kruemel()||K.active()).id, sfx:"fanfare"});
   return true;
 };
 
+
+// =====================================================================
+// Klänge – werden im Browser erzeugt, keine Audiodateien nötig
+// =====================================================================
+let actx = null;
+function ctx(){
+  if(!actx){ const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return null; actx = new AC(); }
+  if(actx.state === "suspended") actx.resume();
+  return actx;
+}
+// iPhone/iPad: Ton erst nach der ersten Berührung erlaubt
+["pointerdown","keydown"].forEach(ev => document.addEventListener(ev, () => { if(P.sound) ctx(); }, {once:true, capture:true}));
+try{ if(navigator.audioSession) navigator.audioSession.type = "playback"; }catch(e){}
+
+function tone(f, at, dur, type="triangle", vol=.16, f2){
+  const c = ctx(); if(!c) return;
+  const t = c.currentTime + at;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if(f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(at, dur, vol=.12, freq=1800){
+  const c = ctx(); if(!c) return;
+  const t = c.currentTime + at;
+  const buf = c.createBuffer(1, Math.ceil(c.sampleRate*dur), c.sampleRate), d = buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+  const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain();
+  src.buffer = buf; bp.type = "bandpass"; bp.frequency.value = freq; bp.Q.value = 1.2;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp).connect(g).connect(c.destination); src.start(t);
+}
+const arp = (fs, step, dur, type, vol) => fs.forEach((f,i)=>tone(f, i*step, dur, type, vol));
+const SFX = {
+  ok:      () => { tone(880,0,.12); tone(1318.5,.08,.2); },
+  bad:     () => { tone(233,0,.18,"sine",.22); tone(175,.13,.28,"sine",.22); },
+  idk:     () => { tone(392,0,.14,"sine",.16); tone(330,.1,.2,"sine",.14); },
+  combo:   () => arp([659,784,988,1319],.07,.18),
+  coin:    () => { tone(1568,0,.08,"square",.05); tone(2093,.06,.22,"square",.05); },
+  pop:     () => tone(520,0,.09,"sine",.16,880),
+  fanfare: () => { arp([523,659,784],.12,.22,"triangle",.17); tone(1047,.36,.6,"triangle",.17); tone(784,.36,.6,"sine",.08); },
+  hatch:   () => { noise(0,.06,.18,2500); noise(.12,.06,.18,2200); noise(.26,.08,.2,2000); setTimeout(()=>SFX.fanfare(),380); },
+  egg:     () => arp([784,988,1175,1568,1976],.06,.25,"sine",.12),
+  dice:    () => { for(let i=0;i<7;i++) noise(i*.055,.04,.16,1200+Math.random()*1500); tone(988,.42,.25,"triangle",.14); },
+  tick:    () => tone(1300,0,.035,"square",.05),
+  end:     () => { tone(523,0,.14); tone(392,.14,.14); tone(523,.28,.45); }
+};
+K.sfx = function(name){ if(!P.sound || !SFX[name]) return; try{ SFX[name](); }catch(e){} };
+// Musikalischer Ton (z. B. für die Musik-Trainer)
+K.playTone = function(freq, dur=.7, at=0){
+  if(!P.sound) return;
+  try{ tone(freq, at, dur, "triangle", .2); tone(freq*2, at, dur*.6, "sine", .05); }catch(e){}
+};
+K.soundOn = () => !!P.sound;
+K.toggleSound = function(){ P.sound = !P.sound; K.save(); if(P.sound){ ctx(); K.sfx("pop"); } return P.sound; };
+
 K.bonusCoins = function(n){
-  P.coins += n; K.save(); K.render();
+  P.coins += n; K.save(); K.render(); K.sfx("coin");
   const c = document.getElementById("kCoins"); if(c){ c.classList.remove("bump"); void c.offsetWidth; c.classList.add("bump"); }
 };
 
@@ -608,6 +673,7 @@ K.mount = function(el, options={}){
       <div class="bar"><div class="bar-label"><span>Tagesziel</span><span id="kGoalLabel"></span></div><div class="track"><div class="fill goal" id="kGoalFill"></div></div></div>
       <div class="chips" id="kChips"></div>
     </div>
+    <button type="button" class="sound-btn" id="kSound"></button>
     <button type="button" class="wardrobe-btn" id="kWardrobeBtn" aria-expanded="false" aria-controls="kShop">👕 Kleiderschrank öffnen</button>`;
   const shop = document.createElement("section");
   shop.className = "shop"; shop.id = "kShop"; shop.hidden = true; shop.setAttribute("aria-labelledby","kShopTitle");
@@ -620,6 +686,10 @@ K.mount = function(el, options={}){
   document.body.append(cel);
 
   $("kName").onclick = renameStart;
+  const sb = $("kSound");
+  const paintSound = () => { sb.textContent = P.sound ? "🔊" : "🔇"; sb.setAttribute("aria-label", P.sound ? "Ton ausschalten" : "Ton einschalten"); sb.setAttribute("aria-pressed", P.sound ? "false" : "true"); };
+  sb.onclick = () => { K.toggleSound(); paintSound(); };
+  paintSound();
   $("kWardrobeBtn").onclick = () => openShop($("kShop").hidden);
   $("kShopClose").onclick = () => { openShop(false); $("kWardrobeBtn").focus(); };
   $("kCelOk").onclick = nextCelebration;
@@ -708,12 +778,14 @@ K.react = function(res, r){
     f.textContent = "+" + res.xp + " XP" + (res.fav ? " ❤️" : "") + (res.coins ? "\n+" + res.coins + " 🪙" : "");
     f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
     animate("hop");
+    K.sfx(r.combo && r.combo % 5 === 0 ? "combo" : "ok");
     if(r.fixed) K.say("Fehler besiegt!");
     else if(r.combo && r.combo % 5 === 0) K.say(r.combo + "er-Serie! 🔥");
     else if(!res.full) K.say("Ich bin satt davon… probier mal was anderes!");
     else K.say(pick(c.ok));
   }else{
     animate("droop");
+    K.sfx(r.gaveUp ? "idk" : "bad");
     K.say(r.gaveUp ? pick(LINES_IDK) : pick(c.bad));
   }
   res.events.forEach(reactEvent);
@@ -722,22 +794,22 @@ K.react = function(res, r){
 };
 
 function reactEvent(e){
-  if(e.type==="goal" && e.record) celebrate("Neuer Rekord: " + P.dayStreak + " Tage am Stück!", "So lange hast du noch nie durchgehalten. " + K.active().name + " platzt vor Stolz!");
-  if(e.type==="goal") celebrate("Tagesziel geschafft!", "Bonus: +" + COIN.dailyGoal + " 🪙. " + (P.dayStreak>1 ? P.dayStreak + " Tage am Stück! " + K.active().name + " ist mega stolz auf dich." : K.active().name + " ist satt und glücklich. Komm morgen wieder, dann startet deine Tages-Serie!"));
+  if(e.type==="goal" && e.record) celebrate("Neuer Rekord: " + P.dayStreak + " Tage am Stück!", "So lange hast du noch nie durchgehalten. " + K.active().name + " platzt vor Stolz!", {sfx:"fanfare"});
+  if(e.type==="goal") celebrate("Tagesziel geschafft!", "Bonus: +" + COIN.dailyGoal + " 🪙. " + (P.dayStreak>1 ? P.dayStreak + " Tage am Stück! " + K.active().name + " ist mega stolz auf dich." : K.active().name + " ist satt und glücklich. Komm morgen wieder, dann startet deine Tages-Serie!"), {sfx:"fanfare"});
   if(e.type==="stage"){
     const pet = petById(e.pet), sp = SPECIES[pet.species], stages = stagesOf(pet);
     if(pet.species==="kruemel"){
-      celebrate(e.from===0 ? pet.name + " ist geschlüpft!" : pet.name + " ist gewachsen!", "Neue Stufe: " + stages[e.to].name + ". Geschenk: +" + COIN.stageUp + " 🪙" + (ITEMS.some(i=>i.minStage===e.to) ? " und neue Sachen im Kleiderschrank!" : "."), {pet:pet.id});
+      celebrate(e.from===0 ? pet.name + " ist geschlüpft!" : pet.name + " ist gewachsen!", "Neue Stufe: " + stages[e.to].name + ". Geschenk: +" + COIN.stageUp + " 🪙" + (ITEMS.some(i=>i.minStage===e.to) ? " und neue Sachen im Kleiderschrank!" : "."), {pet:pet.id, sfx: e.from===0 ? "hatch" : "fanfare"});
     }else if(e.from===0){
       const ch = CHARS[pet.character];
-      celebrate("Es ist geschlüpft!", "Art: " + sp.name + ". Seltenheit: " + RARITY[sp.rarity].label + ". Charakter: " + ch.emoji + " " + ch.label + ". Lieblingsfach: " + pet.fav + ". Geschenk: +" + COIN.stageUp + " 🪙", {pet:pet.id, nameFor:pet.id});
+      celebrate("Es ist geschlüpft!", "Art: " + sp.name + ". Seltenheit: " + RARITY[sp.rarity].label + ". Charakter: " + ch.emoji + " " + ch.label + ". Lieblingsfach: " + pet.fav + ". Geschenk: +" + COIN.stageUp + " 🪙", {pet:pet.id, nameFor:pet.id, sfx:"hatch"});
     }else{
-      celebrate(pet.name + " ist gewachsen!", "Neue Stufe: " + stages[e.to].name + ". Geschenk: +" + COIN.stageUp + " 🪙", {pet:pet.id});
+      celebrate(pet.name + " ist gewachsen!", "Neue Stufe: " + stages[e.to].name + ". Geschenk: +" + COIN.stageUp + " 🪙", {pet:pet.id, sfx:"fanfare"});
     }
   }
   if(e.type==="newEgg"){
     const egg = petById(e.pet), from = petById(e.from);
-    celebrate("Ein neues Ei!", from.name + " ist ausgewachsen. Dafür liegt jetzt ein neues Ei im Zoo, und ab sofort wächst das Ei. Seltenheit: " + RARITY[SPECIES[egg.species].rarity].label + ". Im Zoo kannst du jederzeit wechseln, wer wächst.", {pet:egg.id});
+    celebrate("Ein neues Ei!", from.name + " ist ausgewachsen. Dafür liegt jetzt ein neues Ei im Zoo, und ab sofort wächst das Ei. Seltenheit: " + RARITY[SPECIES[egg.species].rarity].label + ". Im Zoo kannst du jederzeit wechseln, wer wächst.", {pet:egg.id, sfx:"egg"});
   }
   if(e.type==="full") celebrate("Pause für dieses Thema?", "Du hast heute schon " + K.TRAINER_DAILY_FULL + " richtige Antworten hier. Ab jetzt gibt es in diesem Trainer halbe XP und weniger Münzen. In einem anderen Trainer gibt es wieder volle Belohnung!");
 }
@@ -766,6 +838,7 @@ function nextCelebration(){
   $("kCelText").textContent = c.text;
   $("kCelName").hidden = !c.o.nameFor;
   cel.hidden = false;
+  if(c.o.sfx) K.sfx(c.o.sfx);
   if(c.o.nameFor){
     const p = petById(c.o.nameFor);
     $("kCelNameInput").value = p.named ? p.name : SPECIES[p.species].def;
@@ -834,12 +907,13 @@ function itemClick(it, tr){
   const k = K.kruemel(), state = itemState(it);
   const talk = (txt, ms) => { if(K.active()===k) K.say(txt, ms); };
   if(state==="worn"){ delete k.wear[it.slot]; tryOn = null; K.save(); talk("Ausgezogen."); }
-  else if(state==="owned"){ k.wear[it.slot] = it.id; tryOn = null; K.save(); if(K.active()===k) animate("hop"); talk("Schick!"); }
+  else if(state==="owned"){ k.wear[it.slot] = it.id; tryOn = null; K.save(); K.sfx("pop"); if(K.active()===k) animate("hop"); talk("Schick!"); }
   else if(state==="reward"){ talk("Gibt's nur, wenn du " + (tr ? tr.title : "das Thema") + " meisterst!", 3000); }
   else if(state==="locked"){ talk("Erst wenn ich " + STAGES[it.minStage].name + " bin!"); }
   else if(state==="poor"){ tryOn = it.id; talk("Noch " + (it.price-P.coins) + " 🪙 sammeln!"); }
   else if(state==="buy"){ tryOn = it.id; talk("Steht mir, oder?"); }
   else if(state==="trying"){
+    K.sfx("coin");
     P.coins -= it.price; P.owned.push(it.id); k.wear[it.slot] = it.id; tryOn = null;
     K.save(); if(K.active()===k) animate("hop"); talk("Juhu, danke!");
   }
@@ -882,7 +956,7 @@ function renderZoo(){
       node = document.createElement("button");
       node.type = "button"; node.className = "zpet";
       node.innerHTML = `<span class="bubble zbubble"></span><span class="zsvg"></span>`;
-      node.onclick = () => { zoo.sel = pet.id; zoo.armed = false; hop(pet.id); zsay(pet.id, K.isEgg(pet) ? "*wackel*" : pick((CHARS[pet.character]||CHARS.verfressen).idle)); renderZoo(); };
+      node.onclick = () => { zoo.sel = pet.id; zoo.armed = false; hop(pet.id); K.sfx("pop"); zsay(pet.id, K.isEgg(pet) ? "*wackel*" : pick((CHARS[pet.character]||CHARS.verfressen).idle)); renderZoo(); };
       meadow.append(node);
       zoo.nodes[pet.id] = node;
       zoo.pos[pet.id] = {x: 8 + ((i*37) % 80), lane: i % 3, flip:false};
@@ -929,7 +1003,7 @@ function renderDetail(){
     if(!zoo.armed){ zoo.armed = true; renderDetail(); return; }
     zoo.armed = false;
     const rarity = K.reroll(pet.id);
-    if(rarity){ hop(pet.id); zsay(pet.id, RARITY[rarity].label + "!", 2600); }
+    if(rarity){ K.sfx("dice"); hop(pet.id); zsay(pet.id, RARITY[rarity].label + "!", 2600); }
   };
 }
 
