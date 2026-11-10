@@ -18,8 +18,8 @@ K.TRAINERS = [
     desc:"Notenwerte, Takte ergänzen, Zählzeiten", path:"musik-notenwerte.html",
     total:7, reward:"notepin" },
   { id:"brueche", subject:"Mathe", title:"Bruchrechnen",
-    desc:"Vergleichen, kürzen, erweitern, unechte Brüche", path:"mathe-brueche.html",
-    total:9, reward:"geo" }
+    desc:"ggT, kgV, Hauptnenner, vergleichen, ordnen, kürzen, erweitern, unechte Brüche", path:"mathe-brueche.html",
+    total:13, reward:"geo" }
 ];
 // Fächer, die ein Tier als Lieblingsfach haben kann (auch künftige)
 const SUBJECTS = [...new Set(K.TRAINERS.map(t=>t.subject).concat(["Mathe","Musik"]))];

@@ -22,6 +22,7 @@
 
   <div class="modes" role="group" aria-label="Übungsmodus">
     <button type="button" id="modeAll" aria-pressed="true">Alles</button>
+    <button type="button" id="modeTk" aria-pressed="false">ggT &amp; kgV</button>
     <button type="button" id="modeCmp" aria-pressed="false">Vergleichen</button>
     <button type="button" id="modeKe" aria-pressed="false">Kürzen &amp; Erweitern</button>
     <button type="button" id="modeImp" aria-pressed="false">Unechte Brüche</button>
@@ -32,6 +33,11 @@
     <p class="given-label" id="taskLabel"></p>
     <p class="speed-title" id="question"></p>
     <div class="expr" id="expr"></div>
+    <div id="orderBox" hidden>
+      <p class="order-hint">Tippe die Brüche vom kleinsten zum größten an. Nochmal tippen nimmt einen zurück.</p>
+      <div class="order-row" id="orderRow" aria-label="Deine Reihenfolge"></div>
+      <div class="tiles" id="tiles" aria-label="Brüche"></div>
+    </div>
     <div class="cmp-btns" id="cmpBtns" hidden>
       <button type="button" class="cmp" data-v="<" aria-label="kleiner als">&lt;</button>
       <button type="button" class="cmp" data-v="=" aria-label="gleich">=</button>
@@ -61,9 +67,13 @@ const META = K.TRAINERS.find(t=>t.id===TRAINER_ID);
 
 // Aufgabentypen = Lernziele (für Meisterung und Fehlerliste)
 const SKILLS = {
+  "ggt":          {label:"ggT bestimmen",                       group:"tk"},
+  "kgv":          {label:"kgV bestimmen",                       group:"tk"},
+  "hauptnenner":  {label:"Auf den Hauptnenner bringen",         group:"tk"},
   "vgl-nenner":   {label:"Vergleichen: gleicher Nenner",        group:"cmp"},
   "vgl-zaehler":  {label:"Vergleichen: gleicher Zähler",        group:"cmp"},
   "vgl-ungleich": {label:"Vergleichen: verschiedene Nenner",    group:"cmp"},
+  "ordnen":       {label:"Mehrere Brüche ordnen",               group:"cmp"},
   "kuerzen-mit":  {label:"Kürzen mit einer Zahl",               group:"ke"},
   "kuerzen-voll": {label:"Vollständig kürzen",                  group:"ke"},
   "erw-mit":      {label:"Erweitern mit einer Zahl",            group:"ke"},
@@ -99,6 +109,26 @@ function reducedFrac(maxDen, proper=true){
   do{ d = rnd(2, maxDen); n = proper ? rnd(1, d-1) : rnd(1, 2*d); }while(gcd(n,d)!==1);
   return [n, d];
 }
+const divisors = n => { const out = []; for(let i=1;i<=n;i++) if(n%i===0) out.push(i); return out; };
+const multiplesUpTo = (n, lim) => { const out = []; for(let m=n;m<=lim;m+=n) out.push(m); return out; };
+const lcmAll = arr => arr.reduce((a,b)=>lcm(a,b));
+// Nenner, die in der 6. Klasse typisch sind
+const DENS = [2,3,4,5,6,8,9,10,12,15,16,18,20];
+function fracSet(count, maxL){
+  for(let tries=0; tries<500; tries++){
+    const out = []; const vals = new Set();
+    while(out.length < count){
+      const d = pick(DENS); let n;
+      do{ n = rnd(1, d-1); }while(gcd(n,d)!==1);
+      const v = n/d;
+      if([...vals].some(x=>Math.abs(x-v)<1e-9)) continue;
+      vals.add(v); out.push([n,d]);
+    }
+    const L = lcmAll(out.map(f=>f[1]));
+    if(L <= maxL && new Set(out.map(f=>f[1])).size >= 2) return out;
+  }
+  return [[1,2],[2,3],[3,4]].slice(0,count);
+}
 const F = (n,d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
 const MIX = (w,n,d) => `<span class="mixed"><span>${w}</span>${F(n,d)}</span>`;
 const FIN = (idN, idD, fixedD) => `<span class="frac in"><input class="num-in" id="${idN}" inputmode="numeric" autocomplete="off" aria-label="Zähler"><span class="bar"></span>${fixedD!==undefined ? `<span class="fixed-num">${fixedD}</span>` : `<input class="num-in" id="${idD}" inputmode="numeric" autocomplete="off" aria-label="Nenner">`}</span>`;
@@ -108,6 +138,24 @@ const val = id => { const v = ($(id).value||"").trim(); return /^\d+$/.test(v) ?
 // ---- Aufgaben erzeugen ----
 function make(key){
   const t = {key};
+  if(key==="ggt"){
+    if(Math.random()<.12){ let a,b; do{ a = rnd(4,30); b = rnd(4,30); }while(a===b || gcd(a,b)!==1); t.nums = [a,b]; }
+    else{ let g,a,b; do{ g = rnd(2,12); a = rnd(1,8); b = rnd(1,8); }while(a===b || gcd(a,b)!==1 || g*a>100 || g*b>100 || (a===1 && b===1)); t.nums = [g*a, g*b]; }
+    t.sol = gcd(...t.nums);
+  }
+  if(key==="kgv"){
+    let a,b; do{ a = rnd(2,15); b = rnd(2,15); }while(a===b || lcm(a,b)>90);
+    t.nums = [a,b]; t.sol = lcm(a,b);
+  }
+  if(key==="hauptnenner"){
+    t.fr = fracSet(Math.random()<.35 ? 3 : 2, 48);
+    t.H = lcmAll(t.fr.map(f=>f[1]));
+  }
+  if(key==="ordnen"){
+    t.fr = fracSet(rnd(3,5), 60);
+    t.H = lcmAll(t.fr.map(f=>f[1]));
+    t.order = []; // vom Kind gewählte Reihenfolge (Indizes)
+  }
   if(key==="vgl-nenner"){
     const d = rnd(3, 12); let a = rnd(1, d+3), b = rnd(1, d+3);
     if(Math.random()<.15) b = a;
@@ -160,11 +208,21 @@ function nextKey(){
 // ---- Anzeige ----
 function newRound(){
   task = make(nextKey()); lastKey = task.key; checked = false;
-  $("cmpBtns").hidden = true; $("way").hidden = true;
+  $("cmpBtns").hidden = true; $("way").hidden = true; $("orderBox").hidden = true;
   $("feedback").textContent = ""; $("feedback").className = "feedback";
   $("go").hidden = false; $("go").textContent = "Prüfen"; $("idk").hidden = false;
   const k = task.key;
   let label = "", q = "", expr = "";
+  if(k==="ggt"){ label = "ggT und kgV"; q = "Bestimme den größten gemeinsamen Teiler."; expr = `<span>ggT(${task.nums[0]}; ${task.nums[1]}) =</span>${WIN("x")}`; }
+  if(k==="kgv"){ label = "ggT und kgV"; q = "Bestimme das kleinste gemeinsame Vielfache."; expr = `<span>kgV(${task.nums[0]}; ${task.nums[1]}) =</span>${WIN("x")}`; }
+  if(k==="hauptnenner"){
+    label = "Gleichnamig machen"; q = "Bring die Brüche auf den Hauptnenner.";
+    expr = `<span class="hn-list">` + task.fr.map((f,i)=>`<span class="hn-item">${F(...f)}<span>=</span>${FIN("n"+i,"d"+i)}</span>`).join("") + `</span>`;
+  }
+  if(k==="ordnen"){
+    label = "Brüche ordnen"; q = "Ordne der Größe nach.";
+    $("orderBox").hidden = false; renderOrder();
+  }
   if(k.startsWith("vgl")){
     label = "Brüche vergleichen"; q = "Welches Zeichen gehört in die Lücke?";
     expr = `${F(...task.a)}<span class="cmp-slot" id="slot">?</span>${F(...task.b)}`;
@@ -187,10 +245,32 @@ function newRound(){
     if(empty) empty.focus(); else check(false);
   }));
   if(ins.length) ins[0].focus({preventScroll:true});
+  else if(k==="ordnen") $("tiles").querySelector(".tile").focus({preventScroll:true});
   else $("cmpBtns").querySelector(".cmp").focus({preventScroll:true});
 }
 
 $("cmpBtns").querySelectorAll(".cmp").forEach(b => b.onclick = () => check(false, b.dataset.v));
+// ---- Ordnen: Brüche antippen ----
+function renderOrder(res){
+  const t = task;
+  const row = $("orderRow"), tiles = $("tiles");
+  row.innerHTML = ""; tiles.innerHTML = "";
+  t.order.forEach((idx, pos) => {
+    if(pos>0){ const lt = document.createElement("span"); lt.className = "lt"; lt.textContent = "<"; row.append(lt); }
+    const b = document.createElement("button"); b.type = "button"; b.className = "tile" + (res ? (res[pos] ? " ok" : " bad") : "");
+    b.innerHTML = F(...t.fr[idx]); b.setAttribute("aria-label", t.fr[idx][0] + " von " + t.fr[idx][1] + ", zurücknehmen");
+    b.onclick = () => { if(checked) return; t.order.splice(pos,1); renderOrder(); const f = $("tiles").querySelector(".tile"); if(f) f.focus(); };
+    row.append(b);
+  });
+  t.fr.forEach((f, idx) => {
+    if(t.order.includes(idx)) return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "tile";
+    b.innerHTML = F(...f); b.setAttribute("aria-label", f[0] + " von " + f[1]);
+    b.onclick = () => { if(checked) return; t.order.push(idx); renderOrder(); const nx = $("tiles").querySelector(".tile"); (nx || $("go")).focus(); };
+    tiles.append(b);
+  });
+}
+
 
 // ---- Rechenweg ----
 function bars(fr){
@@ -199,6 +279,25 @@ function bars(fr){
 }
 function way(){
   const t = task, k = t.key;
+  if(k==="ggt"){
+    const [a,b] = t.nums, da = divisors(a), db = divisors(b);
+    return `<strong>Teilermengen:</strong><br><span class="set">T(${a}) = {${da.join(", ")}}</span><br><span class="set">T(${b}) = {${db.join(", ")}}</span><br>Der größte Teiler, der in beiden vorkommt, ist <strong>${t.sol}</strong>.` + (t.sol===1 ? " Die Zahlen sind teilerfremd." : "");
+  }
+  if(k==="kgv"){
+    const [a,b] = t.nums;
+    return `<strong>Vielfachenmengen:</strong><br><span class="set">V(${a}) = {${multiplesUpTo(a,t.sol).join(", ")}, …}</span><br><span class="set">V(${b}) = {${multiplesUpTo(b,t.sol).join(", ")}, …}</span><br>Das kleinste Vielfache, das in beiden vorkommt, ist <strong>${t.sol}</strong>.`;
+  }
+  if(k==="hauptnenner" || k==="ordnen"){
+    const H = t.H;
+    const conv = t.fr.map(([n,d]) => `${n}/${d} = ${n*H/d}/${H}` + (H/d>1 ? ` (mal ${H/d})` : "")).join(", ");
+    let w = `<strong>Hauptnenner = kgV der Nenner = ${H}.</strong> ` + conv + ".";
+    if(k==="ordnen"){
+      const sorted = t.fr.slice().sort((x,y)=>x[0]/x[1]-y[0]/y[1]);
+      w += `<br>Jetzt nur noch die Zähler vergleichen: <strong>${sorted.map(f=>f[0]+"/"+f[1]).join(" < ")}</strong>`;
+    }
+    return w;
+  }
+
   if(k==="vgl-nenner") return `<strong>Gleicher Nenner:</strong> Die Teile sind gleich groß, also gewinnt der größere Zähler.` + bars([t.a,t.b]);
   if(k==="vgl-zaehler") return `<strong>Gleicher Zähler:</strong> Gleich viele Teile, aber beim kleineren Nenner sind die Teile größer.` + bars([t.a,t.b]);
   if(k==="vgl-ungleich"){
@@ -220,8 +319,48 @@ function check(giveUp, cmpVal){
   const t = task, k = t.key;
   let ok = false, msg = "";
   // richtig = grün, falsch = rot (eigene Eingabe bleibt stehen), aufgegeben = Lösung gestrichelt eintragen
-  const mark = (id, good, sol) => { const el = $(id); if(!el) return; el.readOnly = true; if(giveUp){ el.value = sol; return; } el.classList.add(good ? "ok" : "bad"); };
-  if(k.startsWith("vgl")){
+  var mark = (id, good, sol) => { const el = $(id); if(!el) return; el.readOnly = true; if(giveUp){ el.value = sol; return; } el.classList.add(good ? "ok" : "bad"); };
+  if(k==="ordnen"){
+    if(!giveUp && t.order.length < t.fr.length){ $("feedback").textContent = "Tippe zuerst alle Brüche an."; $("feedback").className = "feedback"; return; }
+    const sorted = t.fr.map((f,i)=>i).sort((x,y)=>t.fr[x][0]/t.fr[x][1]-t.fr[y][0]/t.fr[y][1]);
+    if(giveUp){ t.order = sorted.slice(); renderOrder(); ok = false; msg = "So ist die richtige Reihenfolge."; }
+    else{
+      const res = t.order.map((idx,pos)=>idx===sorted[pos]);
+      ok = res.every(Boolean);
+      renderOrder(res);
+      msg = ok ? "Richtig sortiert!" : "Nicht ganz. Rot sind die Brüche am falschen Platz.";
+    }
+  }else if(k==="hauptnenner"){
+    const ins = [...$("expr").querySelectorAll("input")];
+    if(!giveUp && ins.some(i=>!/^\d+$/.test(i.value.trim()))){ $("feedback").textContent = "Füll alle Felder mit ganzen Zahlen aus."; $("feedback").className = "feedback"; return; }
+    const ds = t.fr.map((f,i)=>val("d"+i)), ns = t.fr.map((f,i)=>val("n"+i));
+    ok = !giveUp;
+    t.fr.forEach(([n,d],i)=>{
+      const gd = !giveUp && ds[i]===t.H, gn = !giveUp && ns[i]===n*t.H/d;
+      if(!(gd && gn)) ok = false;
+      mark("d"+i, gd, t.H); mark("n"+i, gn, n*t.H/d);
+    });
+    if(!ok && !giveUp){
+      const sameD = ds.every(x=>x===ds[0]);
+      const allEq = t.fr.every(([n,d],i)=>ds[i] && ns[i]*d===n*ds[i]);
+      if(sameD && allEq && ds[0]!==t.H) msg = "Gleichnamig sind sie, aber " + ds[0] + " ist nicht der kleinste gemeinsame Nenner. Der Hauptnenner ist " + t.H + ".";
+      else if(!sameD) msg = "Alle Brüche brauchen denselben Nenner.";
+    }
+    if(!msg) msg = ok ? "Richtig, alle gleichnamig!" : giveUp ? "So geht's:" : "Leider nicht ganz.";
+  }else if(k==="ggt" || k==="kgv"){
+    const x = val("x");
+    if(!giveUp && x===null){ $("feedback").textContent = "Gib eine ganze Zahl ein."; $("feedback").className = "feedback"; return; }
+    ok = !giveUp && x===t.sol;
+    mark("x", ok, t.sol);
+    if(!ok && !giveUp){
+      const [a,b] = t.nums;
+      if(k==="ggt" && a%x===0 && b%x===0) msg = x + " ist ein gemeinsamer Teiler, aber nicht der größte.";
+      else if(k==="ggt" && x>1 && (a%x || b%x)) msg = x + " teilt nicht beide Zahlen.";
+      else if(k==="kgv" && x>0 && x%a===0 && x%b===0) msg = x + " ist ein gemeinsames Vielfaches, aber nicht das kleinste.";
+      else if(k==="kgv" && (x%a || x%b)) msg = x + " ist kein Vielfaches von beiden Zahlen.";
+    }
+    if(!msg) msg = ok ? "Richtig!" : giveUp ? "So geht's:" : "Leider nicht ganz.";
+  }else if(k.startsWith("vgl")){
     const A = t.a[0]*t.b[1], B = t.b[0]*t.a[1];
     const sol = A < B ? "<" : A > B ? ">" : "=";
     ok = !giveUp && cmpVal === sol;
@@ -290,7 +429,7 @@ function check(giveUp, cmpVal){
 
 function setMode(m){
   mode = m;
-  [["All","all"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,v]) => $("mode"+x).setAttribute("aria-pressed", m===v));
+  [["All","all"],["Tk","tk"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,v]) => $("mode"+x).setAttribute("aria-pressed", m===v));
 }
 
 let clearArmed = false;
@@ -317,7 +456,7 @@ function renderMistakes(){
 
 $("go").onclick = () => checked ? newRound() : check(false);
 $("idk").onclick = () => check(true);
-[["All","all"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,m]) => $("mode"+x).onclick = () => { if(mode!==m){ setMode(m); newRound(); } });
+[["All","all"],["Tk","tk"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,m]) => $("mode"+x).onclick = () => { if(mode!==m){ setMode(m); newRound(); } });
 
 renderMistakes();
 newRound();
