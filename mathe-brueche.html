@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bruchrechnen – Lernwelt</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>➗</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <a class="back" href="./">← Zur Übersicht</a>
+  <header>
+    <h1>Bruchrechnen</h1>
+    <p class="score" id="score">Noch keine Antworten</p>
+  </header>
+
+  <section id="buddy" aria-label="Dein Tier"></section>
+
+  <div class="modes" role="group" aria-label="Übungsmodus">
+    <button type="button" id="modeAll" aria-pressed="true">Alles</button>
+    <button type="button" id="modeCmp" aria-pressed="false">Vergleichen</button>
+    <button type="button" id="modeKe" aria-pressed="false">Kürzen &amp; Erweitern</button>
+    <button type="button" id="modeImp" aria-pressed="false">Unechte Brüche</button>
+    <button type="button" id="modeErr" aria-pressed="false">Meine Fehler (0)</button>
+  </div>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <p class="given-label" id="taskLabel"></p>
+    <p class="speed-title" id="question"></p>
+    <div class="expr" id="expr"></div>
+    <div class="cmp-btns" id="cmpBtns" hidden>
+      <button type="button" class="cmp" data-v="<" aria-label="kleiner als">&lt;</button>
+      <button type="button" class="cmp" data-v="=" aria-label="gleich">=</button>
+      <button type="button" class="cmp" data-v=">" aria-label="größer als">&gt;</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" id="go">Prüfen</button>
+      <button type="button" class="secondary" id="idk">Keine Ahnung, Brudi!</button>
+      <p class="feedback" id="feedback"></p>
+    </div>
+    <div class="way" id="way" hidden></div>
+  </section>
+
+  <section class="mistakes" aria-labelledby="mh">
+    <h2 id="mh">Fehlerliste</h2>
+    <p>Was hier steht, kommt im Fehler-Modus dran. Zweimal richtig, und es verschwindet. Dreimal hintereinander richtig heißt: gemeistert 🎓</p>
+    <div id="mistakeList"></div>
+  </section>
+</main>
+
+<script src="kruemel.js"></script>
+<script>
+(function(){
+const TRAINER_ID = "brueche";
+const K = Kruemel, $ = id => document.getElementById(id);
+const META = K.TRAINERS.find(t=>t.id===TRAINER_ID);
+
+// Aufgabentypen = Lernziele (für Meisterung und Fehlerliste)
+const SKILLS = {
+  "vgl-nenner":   {label:"Vergleichen: gleicher Nenner",        group:"cmp"},
+  "vgl-zaehler":  {label:"Vergleichen: gleicher Zähler",        group:"cmp"},
+  "vgl-ungleich": {label:"Vergleichen: verschiedene Nenner",    group:"cmp"},
+  "kuerzen-mit":  {label:"Kürzen mit einer Zahl",               group:"ke"},
+  "kuerzen-voll": {label:"Vollständig kürzen",                  group:"ke"},
+  "erw-mit":      {label:"Erweitern mit einer Zahl",            group:"ke"},
+  "erw-auf":      {label:"Erweitern auf einen Nenner",          group:"ke"},
+  "unecht-gem":   {label:"Unechter Bruch → gemischte Zahl",     group:"imp"},
+  "gem-unecht":   {label:"Gemischte Zahl → unechter Bruch",     group:"imp"}
+};
+const KEYS = Object.keys(SKILLS);
+
+const T = K.trainer(TRAINER_ID);
+const saveT = () => K.saveTrainer(TRAINER_ID, T);
+const mastered = () => KEYS.filter(k=>(T.mastery[k]||0) >= K.MASTERY).length;
+
+let mode = "all", task = null, checked = false, lastKey = null;
+let right = 0, total = 0, combo = 0;
+
+K.trackTime(TRAINER_ID);
+K.mount($("buddy"), {
+  chips: () => [
+    {text:"🔥 Serie " + combo, cls: combo>=3 ? "hot" : ""},
+    {text:"🏆 Rekord " + T.bestCombo},
+    {text:"🎓 " + mastered() + " / " + KEYS.length}
+  ]
+});
+
+// ---- Hilfsfunktionen ----
+const rnd = (a,b) => a + Math.floor(Math.random()*(b-a+1));
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const gcd = (a,b) => { a=Math.abs(a); b=Math.abs(b); while(b){ [a,b] = [b, a%b]; } return a; };
+const lcm = (a,b) => a/gcd(a,b)*b;
+function reducedFrac(maxDen, proper=true){
+  let n, d;
+  do{ d = rnd(2, maxDen); n = proper ? rnd(1, d-1) : rnd(1, 2*d); }while(gcd(n,d)!==1);
+  return [n, d];
+}
+const F = (n,d) => `<span class="frac"><span>${n}</span><span>${d}</span></span>`;
+const MIX = (w,n,d) => `<span class="mixed"><span>${w}</span>${F(n,d)}</span>`;
+const FIN = (idN, idD, fixedD) => `<span class="frac in"><input class="num-in" id="${idN}" inputmode="numeric" autocomplete="off" aria-label="Zähler"><span class="bar"></span>${fixedD!==undefined ? `<span class="fixed-num">${fixedD}</span>` : `<input class="num-in" id="${idD}" inputmode="numeric" autocomplete="off" aria-label="Nenner">`}</span>`;
+const WIN = id => `<input class="num-in" id="${id}" inputmode="numeric" autocomplete="off" aria-label="Ganze Zahl">`;
+const val = id => { const v = ($(id).value||"").trim(); return /^\d+$/.test(v) ? parseInt(v,10) : null; };
+
+// ---- Aufgaben erzeugen ----
+function make(key){
+  const t = {key};
+  if(key==="vgl-nenner"){
+    const d = rnd(3, 12); let a = rnd(1, d+3), b = rnd(1, d+3);
+    if(Math.random()<.15) b = a;
+    t.a = [a,d]; t.b = [b,d];
+  }
+  if(key==="vgl-zaehler"){
+    const n = rnd(1, 9); let d1 = rnd(2, 12), d2; do{ d2 = rnd(2, 12); }while(d2===d1);
+    t.a = [n,d1]; t.b = [n,d2];
+  }
+  if(key==="vgl-ungleich"){
+    if(Math.random()<.2){ const [n,d] = reducedFrac(6); const k = rnd(2,4); t.a = [n,d]; t.b = [n*k, d*k]; if(Math.random()<.5) [t.a,t.b] = [t.b,t.a]; }
+    else{ let a, b; do{ a = reducedFrac(12); b = reducedFrac(12); }while(a[1]===b[1] || a[0]*b[1]===b[0]*a[1]); t.a = a; t.b = b; }
+  }
+  if(key==="kuerzen-mit" || key==="kuerzen-voll"){
+    const [n,d] = reducedFrac(key==="kuerzen-mit" ? 10 : 12, Math.random()<.85);
+    const k = key==="kuerzen-mit" ? rnd(2,6) : pick([2,3,4,5,6,8,9,10,12]);
+    t.from = [n*k, d*k]; t.k = k; t.sol = key==="kuerzen-mit" ? [n*k/k, d*k/k] : [n, d];
+    if(key==="kuerzen-mit"){ // Kürzen mit k: Ergebnis darf noch weiter kürzbar sein
+      const extra = gcd(n,d)===1 && Math.random()<.4 ? pick([2,3]) : 1;
+      t.from = [n*k*extra, d*k*extra]; t.sol = [n*extra, d*extra];
+    }
+  }
+  if(key==="erw-mit"){
+    const [n,d] = reducedFrac(10, Math.random()<.8); const k = rnd(2,9);
+    t.from = [n,d]; t.k = k; t.sol = [n*k, d*k];
+  }
+  if(key==="erw-auf"){
+    const [n,d] = reducedFrac(10, Math.random()<.8); const k = rnd(2,8);
+    t.from = [n,d]; t.k = k; t.target = d*k; t.sol = [n*k, d*k];
+  }
+  if(key==="unecht-gem" || key==="gem-unecht"){
+    const w = rnd(1,5), [r,d] = reducedFrac(10);
+    t.w = w; t.r = r; t.d = d; t.imp = w*d + r;
+  }
+  return t;
+}
+
+function nextKey(){
+  if(mode==="err"){
+    const keys = KEYS.filter(k=>T.mistakes[k]);
+    if(!keys.length){ setMode("all"); return nextKey(); }
+    const c = keys.length>1 ? keys.filter(k=>k!==lastKey) : keys;
+    return pick(c);
+  }
+  const pool = KEYS.filter(k => mode==="all" || SKILLS[k].group===mode);
+  const c = pool.length>1 ? pool.filter(k=>k!==lastKey) : pool;
+  return pick(c);
+}
+
+// ---- Anzeige ----
+function newRound(){
+  task = make(nextKey()); lastKey = task.key; checked = false;
+  $("cmpBtns").hidden = true; $("way").hidden = true;
+  $("feedback").textContent = ""; $("feedback").className = "feedback";
+  $("go").hidden = false; $("go").textContent = "Prüfen"; $("idk").hidden = false;
+  const k = task.key;
+  let label = "", q = "", expr = "";
+  if(k.startsWith("vgl")){
+    label = "Brüche vergleichen"; q = "Welches Zeichen gehört in die Lücke?";
+    expr = `${F(...task.a)}<span class="cmp-slot" id="slot">?</span>${F(...task.b)}`;
+    $("cmpBtns").hidden = false; $("go").hidden = true;
+    $("cmpBtns").querySelectorAll(".cmp").forEach(b => { b.className = "cmp"; b.disabled = false; });
+  }
+  if(k==="kuerzen-mit"){ label = "Kürzen"; q = "Kürze mit " + task.k + "."; expr = `${F(...task.from)}<span>=</span>${FIN("n","d")}`; }
+  if(k==="kuerzen-voll"){ label = "Kürzen"; q = "Kürze so weit wie möglich."; expr = `${F(...task.from)}<span>=</span>${FIN("n","d")}`; }
+  if(k==="erw-mit"){ label = "Erweitern"; q = "Erweitere mit " + task.k + "."; expr = `${F(...task.from)}<span>=</span>${FIN("n","d")}`; }
+  if(k==="erw-auf"){ label = "Erweitern"; q = "Erweitere auf den Nenner " + task.target + "."; expr = `${F(...task.from)}<span>=</span>${FIN("n","d",task.target)}`; }
+  if(k==="unecht-gem"){ label = "Unechte Brüche"; q = "Schreib als gemischte Zahl."; expr = `${F(task.imp, task.d)}<span>=</span><span class="mixed">${WIN("w")}${FIN("n","d")}</span>`; }
+  if(k==="gem-unecht"){ label = "Unechte Brüche"; q = "Schreib als unechten Bruch."; expr = `${MIX(task.w, task.r, task.d)}<span>=</span>${FIN("n","d")}`; }
+  $("taskLabel").textContent = label; $("question").textContent = q;
+  $("expr").innerHTML = expr;
+  const ins = [...$("expr").querySelectorAll("input")];
+  ins.forEach((inp, i) => inp.addEventListener("keydown", e => {
+    if(e.key!=="Enter") return; e.preventDefault();
+    if(checked){ newRound(); return; }
+    const empty = ins.find(x=>!x.value.trim());
+    if(empty) empty.focus(); else check(false);
+  }));
+  if(ins.length) ins[0].focus({preventScroll:true});
+  else $("cmpBtns").querySelector(".cmp").focus({preventScroll:true});
+}
+
+$("cmpBtns").querySelectorAll(".cmp").forEach(b => b.onclick = () => check(false, b.dataset.v));
+
+// ---- Rechenweg ----
+function bars(fr){
+  if(fr.some(([n,d]) => n>d || d>16)) return "";
+  return `<div class="bars">` + fr.map(([n,d]) => `<div class="bar-row"><span>${n}/${d}</span><div class="fbar">${Array.from({length:d},(_,i)=>`<span class="${i<n?"on":""}"></span>`).join("")}</div></div>`).join("") + `</div>`;
+}
+function way(){
+  const t = task, k = t.key;
+  if(k==="vgl-nenner") return `<strong>Gleicher Nenner:</strong> Die Teile sind gleich groß, also gewinnt der größere Zähler.` + bars([t.a,t.b]);
+  if(k==="vgl-zaehler") return `<strong>Gleicher Zähler:</strong> Gleich viele Teile, aber beim kleineren Nenner sind die Teile größer.` + bars([t.a,t.b]);
+  if(k==="vgl-ungleich"){
+    const H = lcm(t.a[1], t.b[1]), fa = H/t.a[1], fb = H/t.b[1];
+    return `<strong>Gleichnamig machen:</strong> Hauptnenner ${H}. ${t.a[0]}/${t.a[1]} = ${t.a[0]*fa}/${H} und ${t.b[0]}/${t.b[1]} = ${t.b[0]*fb}/${H}. Jetzt nur noch die Zähler vergleichen.` + bars([t.a,t.b]);
+  }
+  if(k==="kuerzen-mit") return `<strong>Zähler und Nenner durch ${t.k} teilen:</strong> ${t.from[0]} : ${t.k} = ${t.sol[0]} und ${t.from[1]} : ${t.k} = ${t.sol[1]}.`;
+  if(k==="kuerzen-voll"){ const g = gcd(...t.from); return `<strong>Größter gemeinsamer Teiler von ${t.from[0]} und ${t.from[1]} ist ${g}.</strong> ${t.from[0]} : ${g} = ${t.sol[0]} und ${t.from[1]} : ${g} = ${t.sol[1]}. Tipp: Du kannst auch in mehreren Schritten kürzen.`; }
+  if(k==="erw-mit") return `<strong>Zähler und Nenner mal ${t.k}:</strong> ${t.from[0]} · ${t.k} = ${t.sol[0]} und ${t.from[1]} · ${t.k} = ${t.sol[1]}.`;
+  if(k==="erw-auf") return `<strong>Womit erweitern?</strong> ${t.target} : ${t.from[1]} = ${t.k}. Also auch den Zähler mal ${t.k}: ${t.from[0]} · ${t.k} = ${t.sol[0]}.`;
+  if(k==="unecht-gem") return `<strong>Teilen mit Rest:</strong> ${t.imp} : ${t.d} = ${t.w} Rest ${t.r}. Also ${t.w} Ganze und ${t.r}/${t.d}.`;
+  if(k==="gem-unecht") return `<strong>Ganze in Bruchteile umrechnen:</strong> ${t.w} · ${t.d} = ${t.w*t.d}, plus ${t.r} ergibt ${t.imp}. Also ${t.imp}/${t.d}.`;
+  return "";
+}
+
+// ---- Prüfen ----
+function check(giveUp, cmpVal){
+  if(checked) return;
+  const t = task, k = t.key;
+  let ok = false, msg = "";
+  // richtig = grün, falsch = rot (eigene Eingabe bleibt stehen), aufgegeben = Lösung gestrichelt eintragen
+  const mark = (id, good, sol) => { const el = $(id); if(!el) return; el.readOnly = true; if(giveUp){ el.value = sol; return; } el.classList.add(good ? "ok" : "bad"); };
+  if(k.startsWith("vgl")){
+    const A = t.a[0]*t.b[1], B = t.b[0]*t.a[1];
+    const sol = A < B ? "<" : A > B ? ">" : "=";
+    ok = !giveUp && cmpVal === sol;
+    $("slot").textContent = sol; $("slot").style.color = "var(--ok)";
+    $("cmpBtns").querySelectorAll(".cmp").forEach(b => { b.disabled = true; if(b.dataset.v===sol) b.classList.add("ok"); else if(b.dataset.v===cmpVal) b.classList.add("bad"); });
+    msg = ok ? "Richtig!" : giveUp ? "Richtig ist " + sol + "." : "Leider nicht, richtig ist " + sol + ".";
+    $("go").hidden = false;
+  }else{
+    const ins = [...$("expr").querySelectorAll("input")];
+    if(!giveUp && ins.some(i=>!i.value.trim())){ $("feedback").textContent = "Füll zuerst alle Felder aus."; $("feedback").className = "feedback"; return; }
+    if(!giveUp && ins.some(i=>!/^\d+$/.test(i.value.trim()))){ $("feedback").textContent = "Bitte nur ganze Zahlen eintragen."; $("feedback").className = "feedback"; return; }
+    const n = val("n"), d = $("d") ? val("d") : t.target;
+    if(k==="unecht-gem"){
+      const w = val("w");
+      const gw = !giveUp && w===t.w, gn = !giveUp && n===t.r, gd = !giveUp && d===t.d;
+      ok = gw && gn && gd;
+      mark("w", gw, t.w); mark("n", gn, t.r); mark("d", gd, t.d);
+      if(!ok && !giveUp && w!==null && n!==null && d && w*d+n===t.imp && n<d) { msg = "Der Wert stimmt, aber der Bruchteil lässt sich noch kürzen."; }
+      else if(!ok && !giveUp && w!==null && n!==null && d && n>=d) msg = "Achtung: Der Bruchteil muss kleiner als 1 sein.";
+    }else if(k==="gem-unecht"){
+      const gn = !giveUp && n===t.imp, gd = !giveUp && d===t.d;
+      ok = gn && gd;
+      mark("n", gn, t.imp); mark("d", gd, t.d);
+      if(!ok && !giveUp && n!==null && d && n*t.d===t.imp*d) msg = "Gleicher Wert, aber nimm denselben Nenner wie in der Aufgabe.";
+    }else{
+      const [sn, sd] = t.sol;
+      const gn = !giveUp && n===sn, gd = !giveUp && d===sd;
+      ok = gn && gd;
+      mark("n", gn, sn); if($("d")) mark("d", gd, sd);
+      const same = !giveUp && n && d && n*sd===sn*d;
+      if(!ok && same){
+        if(k==="kuerzen-voll") msg = gcd(n,d)>1 ? "Gleicher Wert, aber da geht noch was: " + n + " und " + d + " sind noch durch " + gcd(n,d) + " teilbar." : "Gleicher Wert, aber das ist nicht gekürzt.";
+        else if(k==="kuerzen-mit") msg = "Gleicher Wert, aber du solltest genau mit " + t.k + " kürzen.";
+        else msg = "Gleicher Wert, aber du solltest genau mit " + (t.k) + " erweitern.";
+      }
+    }
+    if(!msg) msg = ok ? "Richtig!" : giveUp ? "So geht's:" : "Leider nicht ganz.";
+  }
+  checked = true; total++;
+  $("way").innerHTML = way(); $("way").hidden = false;
+  let fixed = false;
+  if(ok){
+    right++; combo++;
+    if(combo > T.bestCombo) T.bestCombo = combo;
+    T.mastery[k] = (T.mastery[k]||0) + 1;
+    if(T.mistakes[k]){ T.mistakes[k]--; if(T.mistakes[k]<=0){ delete T.mistakes[k]; fixed = true; } }
+    if(T.mastery[k]===K.MASTERY) msg += " „" + SKILLS[k].label + "“ gemeistert 🎓";
+    $("feedback").className = "feedback ok";
+  }else{
+    combo = 0;
+    T.mistakes[k] = 2; T.mastery[k] = 0;
+    msg += " Kommt auf die Fehlerliste";
+    $("feedback").className = "feedback bad";
+    const sh=$("sheet"); sh.classList.remove("shake"); void sh.offsetWidth; sh.classList.add("shake");
+  }
+  $("feedback").textContent = msg;
+  saveT();
+  $("score").textContent = right + " von " + total + " richtig";
+  $("go").textContent = "Weiter"; $("idk").hidden = true;
+  renderMistakes();
+  const r = {ok, gaveUp:giveUp, combo, fixed};
+  K.react(K.award(TRAINER_ID, r), r);
+  if(mastered() === KEYS.length && META && META.reward) K.grantReward(META.reward);
+  if($("kCel").hidden) $("go").focus();
+}
+
+function setMode(m){
+  mode = m;
+  [["All","all"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,v]) => $("mode"+x).setAttribute("aria-pressed", m===v));
+}
+
+let clearArmed = false;
+function renderMistakes(){
+  const list = KEYS.filter(k=>T.mistakes[k]);
+  $("modeErr").textContent = "Meine Fehler (" + list.length + ")";
+  $("modeErr").disabled = !list.length;
+  const box = $("mistakeList"); box.textContent = ""; clearArmed = false;
+  if(!list.length){ const p=document.createElement("p"); p.className="empty"; p.textContent="Noch keine Fehler. Falsche Antworten landen automatisch hier."; box.append(p); return; }
+  const wrap=document.createElement("div"); wrap.className="list-wrap";
+  const t=document.createElement("table");
+  t.innerHTML="<thead><tr><th>Aufgabenart</th><th>Noch richtig</th></tr></thead>";
+  const tb=document.createElement("tbody");
+  for(const k of list){
+    const tr=document.createElement("tr");
+    [SKILLS[k].label, T.mistakes[k]+"×"].forEach((x,i)=>{const td=document.createElement("td"); td.textContent=x; if(i===1) td.className="n"; tr.append(td);});
+    tb.append(tr);
+  }
+  t.append(tb); wrap.append(t); box.append(wrap);
+  const clear=document.createElement("button"); clear.className="link"; clear.type="button"; clear.textContent="Fehlerliste leeren";
+  clear.onclick=()=>{ if(!clearArmed){ clearArmed=true; clear.textContent="Wirklich alle löschen? Nochmal tippen"; return; } T.mistakes={}; saveT(); renderMistakes(); if(mode==="err"){ setMode("all"); newRound(); } };
+  box.append(clear);
+}
+
+$("go").onclick = () => checked ? newRound() : check(false);
+$("idk").onclick = () => check(true);
+[["All","all"],["Cmp","cmp"],["Ke","ke"],["Imp","imp"],["Err","err"]].forEach(([x,m]) => $("mode"+x).onclick = () => { if(mode!==m){ setMode(m); newRound(); } });
+
+renderMistakes();
+newRound();
+})();
+</script>
+</body>
+</html>

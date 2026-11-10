@@ -16,7 +16,10 @@ K.TRAINERS = [
     total:15, reward:"baton" },
   { id:"notenwerte", subject:"Musik", title:"Notenwerte",
     desc:"Notenwerte, Takte ergänzen, Zählzeiten", path:"musik-notenwerte.html",
-    total:7, reward:"notepin" }
+    total:7, reward:"notepin" },
+  { id:"brueche", subject:"Mathe", title:"Bruchrechnen",
+    desc:"Vergleichen, kürzen, erweitern, unechte Brüche", path:"mathe-brueche.html",
+    total:9, reward:"geo" }
 ];
 // Fächer, die ein Tier als Lieblingsfach haben kann (auch künftige)
 const SUBJECTS = [...new Set(K.TRAINERS.map(t=>t.subject).concat(["Mathe","Musik"]))];
@@ -79,6 +82,7 @@ const ITEMS = [
 
 
 ITEMS.push(
+  {id:"geo", slot:"extra", name:"Geodreieck", reward:"brueche", svg:`<path d="M34 -22 L78 -22 L56 -58 Z" fill="#74B9FF" fill-opacity=".55" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M48 -26 L64 -26 L56 -38 Z" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".6"/><path d="M40 -22 v-4 M46 -22 v-6 M52 -22 v-4 M58 -22 v-6 M64 -22 v-4 M70 -22 v-6" stroke="currentColor" stroke-width="1.3"/>`},
   {id:"baton", slot:"extra", name:"Dirigentenstab", reward:"noten-lesen", svg:`<path d="M38 -26 L68 -62" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M38 -26 L68 -62" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".5"/><ellipse cx="40" cy="-28" rx="4.5" ry="7" transform="rotate(40 40 -28)" fill="#8B5A2B" stroke="currentColor" stroke-width="2"/><ellipse cx="62" cy="-84" rx="5" ry="3.6" transform="rotate(-20 62 -84)" fill="currentColor"/><path d="M66.5 -85 V-102 C68 -96 74 -95 73 -88" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>`},
   {id:"notepin", slot:"neck", name:"Noten-Anstecker", reward:"notenwerte", svg:`<circle cx="16" cy="-18" r="10" fill="#FDCB6E" stroke="currentColor" stroke-width="2.5"/><ellipse cx="13" cy="-14" rx="3.6" ry="2.6" transform="rotate(-20 13 -14)" fill="currentColor"/><path d="M16.2 -14.5 V-25 C17 -21 21 -21 20.5 -17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`},
   {id:"ukcap", slot:"head", name:"London-Cap", reward:"irregular-verbs", svg:`<path d="M-28 -84 C-28 -114 28 -114 28 -84 Z" fill="#1F3A93" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#fff" stroke-width="7"/><path d="M0 -110 V-86 M-25 -95 H25" stroke="#D63031" stroke-width="3"/><path d="M20 -86 q22 -4 26 2 q-4 6 -26 4 z" fill="#D63031" stroke="currentColor" stroke-linejoin="round" stroke-width="3"/>`}

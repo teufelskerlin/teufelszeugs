@@ -269,3 +269,33 @@ td.n{color:var(--bad);font-weight:700;white-space:nowrap}
 .sound-btn:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
 .listen{font:inherit;font-weight:700;font-size:1rem;border:2px solid var(--goal);color:var(--text);background:transparent;border-radius:6px;padding:calc(.7rem - 2px) 1rem;cursor:pointer}
 .listen:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
+
+/* ---- Mathe: Brüche ---- */
+.expr{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem 1rem;font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:clamp(1.8rem,7vw,2.6rem);color:var(--ink);margin:.25rem 0 1.25rem}
+.frac{display:inline-flex;flex-direction:column;align-items:center;line-height:1.05;vertical-align:middle}
+.frac > :first-child{border-bottom:.12em solid currentColor;padding:0 .12em .04em}
+.frac > :last-child{padding:.04em .12em 0}
+.mixed{display:inline-flex;align-items:center;gap:.08em}
+.frac.in{gap:.3rem}
+.frac.in > :first-child{border-bottom:none;padding:0}
+.frac.in .bar{width:100%;height:.12em;background:currentColor;border-radius:2px}
+.num-in{width:3.6rem;font:inherit;font-size:clamp(1.4rem,5.5vw,1.9rem);text-align:center;padding:.1rem 0;border:2px solid var(--rule);border-radius:8px;background:var(--field);color:var(--text)}
+.num-in:focus-visible{outline:none;border-color:var(--ink)}
+.num-in.ok{border-color:var(--ok);background:var(--ok-bg)}
+.num-in.bad{border-color:var(--bad);background:var(--bad-bg)}
+.num-in[readonly]:not(.ok):not(.bad){border-style:dashed}
+.fixed-num{min-width:3.6rem;text-align:center}
+.cmp-btns{display:flex;gap:.6rem;margin:0 0 1rem}
+.cmp{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:2rem;width:4rem;height:4rem;border-radius:14px;border:2px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer}
+.cmp:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
+.cmp.ok{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+.cmp.bad{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.cmp-slot{display:inline-block;min-width:1.2em;text-align:center;color:var(--muted)}
+.way{background:var(--paper);border-left:4px solid var(--goal);border-radius:6px;padding:.6rem .8rem;margin:.75rem 0 0;font-size:1rem}
+.way strong{color:var(--ink)}
+.bars{display:grid;gap:.4rem;margin:.6rem 0 0;max-width:22rem}
+.fbar{display:flex;height:1.1rem;border:2px solid var(--ink);border-radius:4px;overflow:hidden}
+.fbar span{flex:1;border-right:1px solid var(--ink)}
+.fbar span:last-child{border-right:none}
+.fbar span.on{background:var(--goal)}
+.bar-row{display:grid;grid-template-columns:3rem 1fr;align-items:center;gap:.5rem;font-weight:700}
